@@ -3,6 +3,12 @@ uuid = "193516b8-fe0d-4284-b46c-e203758f96c4"
 authors = ["ig-or <19777752+ig-or@users.noreply.github.com> and contributors"]
 version = "0.1.0"
 
+[deps]
+Libdl = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
+Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+qwtw_jll = "d5de49f9-40c9-5bd5-980e-f7e357ea5903"
+
 [compat]
 julia = "1"
 
