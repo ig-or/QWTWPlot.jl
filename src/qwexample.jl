@@ -123,7 +123,7 @@ between plots using this helpful window
 qsmw()
 
 
-# another 1000000 points plot:
+# another 2000000 points plot:
 N = 1000000.0
 R1 = 10.0
 R2 = 4.0
