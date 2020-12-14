@@ -41,6 +41,26 @@ qwtStartDebugH = 0
 qwtStopH = 0
 started = false
 
+old_path = ""
+old_qtPath = ""
+oldLdLibPath = ""
+
+function saveEnv()
+	global old_path, old_qtPath, oldLdLibPath
+	try old_path = ENV["PATH"]; catch end
+	try old_qtPath = ENV["QT_PLUGIN_PATH"]; catch end
+	try oldLdLibPath = ENV["LD_LIBRARY_PATH"]; catch end
+	return
+end
+
+function restoreEnv()
+	global old_path, old_qtPath, oldLdLibPath
+	ENV["PATH"] = old_path
+	ENV["QT_PLUGIN_PATH"] = old_qtPath 
+	ENV["LD_LIBRARY_PATH"] = oldLdLibPath 
+	return
+end
+
 # start qwtw "C" library and attach handlers to it
 # if debug, will try enable debug print out
 function qstart(;debug = false)::Int32
@@ -56,6 +76,7 @@ function qstart(;debug = false)::Int32
 	global qwtwPlot2H, qwtwXlabelH, qwtwYlabelH, qwywTitleH, qwtwVersionH, qwtwMWShowH
 	global qwtwPlot3DH, qwtwFigure3DH, qwtEnableBroadcastH, qwtDisableBroadcastH
 	global qwtStartH, qwtStopH, started
+	global old_path, old_qtPath, oldLdLibPath
 
 	#if qwtwLibHandle != 0 # looks like we already started
 	if started
@@ -79,17 +100,12 @@ function qstart(;debug = false)::Int32
 	#end
 	#new_env = deepcopy(old_env)
 
-	old_path = ""
-	old_qtPath = ""
-	oldLdLibPath = ""
-	try old_path = ENV["PATH"]; catch end
-	try old_qtPath = ENV["QT_PLUGIN_PATH"]; catch end
-	try oldLdLibPath = ENV["LD_LIBRARY_PATH"]; catch end
+	saveEnv()
 		
 	@static if Sys.iswindows() 
 		#ENV["QT_PLUGIN_PATH"]=Qt_jll.artifact_dir * "\\plugins"	
-		ENV["PATH"]= string(qwtw_jll.PATH) * ";" *  string(ENV["PATH"])
-		ENV["PATH"]= string(qwtw_jll.LIBPATH) * ";" *  string(ENV["PATH"])
+		ENV["PATH"]= string(qwtw_jll.PATH[]) * ";" *  string(ENV["PATH"])
+		ENV["PATH"]= string(qwtw_jll.LIBPATH[]) * ";" *  string(ENV["PATH"])
 		
 		#ENV["PATH"]= boost_jll.artifact_dir * "\\bin;" *  ENV["PATH"] 
 		#ENV["PATH"]= qwt_jll.artifact_dir * "\\bin;" *  ENV["PATH"] 
@@ -100,8 +116,8 @@ function qstart(;debug = false)::Int32
 				
 	else
 		#ENV["QT_PLUGIN_PATH"]=string(Qt_jll.artifact_dir) * "/plugins"			
-		ENV["PATH"]=   string(qwtw_jll.PATH) * ":" *  string(Base.ENV["PATH"])
-		ENV["LD_LIBRARY_PATH"] = string(qwtw_jll.LIBPATH) * ":" * string(Base.ENV["LD_LIBRARY_PATH"]) # not sure if this is needed
+		ENV["PATH"]=   string(qwtw_jll.PATH[]) * ":" *  string(Base.ENV["PATH"])
+		ENV["LD_LIBRARY_PATH"] = string(qwtw_jll.LIBPATH[]) * ":" * string(Base.ENV["LD_LIBRARY_PATH"]) # not sure if this is needed
 		#ENV["PATH"]= boost_jll.artifact_dir * "/bin;" *  ENV["PATH"] 
 		
 		#ENV["LD_LIBRARY_PATH"] = string(Qt_jll.LIBPATH) * ":" * ENV["LD_LIBRARY_PATH"] # do not sure why this is not already there
@@ -120,8 +136,9 @@ function qstart(;debug = false)::Int32
 
 		#@printf "loading %s \n" qwtw_libName 
 		try 
-		qwtwLibHandle = Libdl.dlopen(qwtw_libName)
+			qwtwLibHandle = Libdl.dlopen(qwtw_libName)
 		catch ex
+			restoreEnv()
 			@printf "Sorry, dlopen for %s failed; something is wrong\n" qwtw_libName
 			throw(ex)
 		end
@@ -157,20 +174,23 @@ function qstart(;debug = false)::Int32
 
 		# hangs tight!!!!
 		#@printf "starting qstart \n"
-		test = 0
-		if debug
-			test = ccall(qwtStartDebugH, Int32, (Int32,), 10); 
-		else
-			test = ccall(qwtStartH, Int32, ()); # very important to call this in the very beginning
-
+		test = 1
+		try
+			if debug
+				test = ccall(qwtStartDebugH, Int32, (Int32,), 10); 
+			else
+				test = ccall(qwtStartH, Int32, ()); # very important to call this in the very beginning
+			end
+		catch ex
+			restoreEnv()
+			@printf "Sorry, cannot start qwtw. Something is wrong\n" 
+			throw(ex)
 		end
 	#end
 	#@printf "qtstart = %d \n" test
 
 	#Base.ENV = old_env
-	#ENV["PATH"] = old_path
-	#ENV["QT_PLUGIN_PATH"] = old_qtPath 
-	#ENV["LD_LIBRARY_PATH"] = oldLdLibPath 
+	restoreEnv()
 
 	#version = qversion();
 	#println(version);
@@ -189,7 +209,7 @@ function qstop()
 		if (qwtStopH != 0) 
 			started = false
 			ccall(qwtStopH,  Cvoid, ())
-
+			@printf "qwtw stopped\n"
 		end
 		Libdl.dlclose(qwtwLibHandle)
 	else

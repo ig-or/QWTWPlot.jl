@@ -4,10 +4,9 @@
 #   also, useful page located here: https://github.com/ig-or/QWTWPlot.jl/wiki/qwtw-library-features
 #   
 
-using QWTwPlot # start 'qwtw' library
+using QWTWPlot # start 'qwtw' library
 using Random
 qstart(debug = false) # sorry, have to call this explicity here, not in __init__
-
 
 # draw thin blue 'sinus':
 tMax = 10. # let it be `maximum time`
