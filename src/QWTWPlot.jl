@@ -68,7 +68,7 @@ start qwtw "C" library.
 Without it, nothing will work. Call it before any other functions.
 if debug, will try to enable debug print out.
 """
-function qstart(;debug = false)::Int32
+function qstart(;debug = false, qwtw_test = false)::Int32
 	qwtw_libName = "nolib"
 	if debug
 	@printf "startint qwtw; current path: %s\n\n" ENV["PATH"]
@@ -106,28 +106,33 @@ function qstart(;debug = false)::Int32
 	#new_env = deepcopy(old_env)
 
 	saveEnv()
-		
-	@static if Sys.iswindows() 
-		ENV["QT_PLUGIN_PATH"]=Qt_jll.artifact_dir * "\\plugins"	
-		ENV["PATH"]= string(qwtw_jll.PATH[]) * ";" *  string(ENV["PATH"])
-		ENV["PATH"]= string(qwtw_jll.LIBPATH[]) * ";" *  string(ENV["PATH"])
-		
-		#ENV["PATH"]= boost_jll.artifact_dir * "\\bin;" *  ENV["PATH"] 
-		#ENV["PATH"]= qwt_jll.artifact_dir * "\\bin;" *  ENV["PATH"] 
-		#ENV["PATH"]= Qt_jll.artifact_dir * "\\bin;" *  ENV["PATH"] 
 
-		#ENV["PATH"]= CompilerSupportLibraries_jll.artifact_dir * "\\bin;" *  ENV["PATH"] 
-		#new_env["PATH"]= FreeType2_jll.artifact_dir * "\\bin;" *  ENV["PATH"] 
-				
+	if qwtw_test
+		@printf "qwtw debug; loading %s .. \n" qwtw_libName
+		@printf "\nPATH = %s\n\n" ENV["PATH"]
 	else
-		#ENV["QT_PLUGIN_PATH"]=string(Qt_jll.artifact_dir) * "/plugins"			
-		ENV["PATH"]=   string(qwtw_jll.PATH[]) * ":" *  string(Base.ENV["PATH"])
-		ENV["LD_LIBRARY_PATH"] = string(qwtw_jll.LIBPATH[]) * ":" * string(Base.ENV["LD_LIBRARY_PATH"]) # not sure if this is needed
-		#ENV["PATH"]= boost_jll.artifact_dir * "/bin;" *  ENV["PATH"] 
-		
-		#ENV["LD_LIBRARY_PATH"] = string(Qt_jll.LIBPATH) * ":" * ENV["LD_LIBRARY_PATH"] # do not sure why this is not already there
-		#ENV["LD_LIBRARY_PATH"] = string(CompilerSupportLibraries_jll.LIBPATH) * ":" * ENV["LD_LIBRARY_PATH"] # do not sure why this is not already there
-		#ENV["LD_LIBRARY_PATH"] = string(FreeType2_jll.LIBPATH) * ":" * ENV["LD_LIBRARY_PATH"] # do not sure why this is not already there
+		@static if Sys.iswindows() 
+			ENV["QT_PLUGIN_PATH"]=Qt_jll.artifact_dir * "\\plugins"	
+			ENV["PATH"]= string(qwtw_jll.PATH[]) * ";" *  string(ENV["PATH"])
+			ENV["PATH"]= string(qwtw_jll.LIBPATH[]) * ";" *  string(ENV["PATH"])
+			
+			#ENV["PATH"]= boost_jll.artifact_dir * "\\bin;" *  ENV["PATH"] 
+			#ENV["PATH"]= qwt_jll.artifact_dir * "\\bin;" *  ENV["PATH"] 
+			#ENV["PATH"]= Qt_jll.artifact_dir * "\\bin;" *  ENV["PATH"] 
+
+			#ENV["PATH"]= CompilerSupportLibraries_jll.artifact_dir * "\\bin;" *  ENV["PATH"] 
+			#new_env["PATH"]= FreeType2_jll.artifact_dir * "\\bin;" *  ENV["PATH"] 
+					
+		else
+			#ENV["QT_PLUGIN_PATH"]=string(Qt_jll.artifact_dir) * "/plugins"			
+			ENV["PATH"]=   string(qwtw_jll.PATH[]) * ":" *  string(Base.ENV["PATH"])
+			ENV["LD_LIBRARY_PATH"] = string(qwtw_jll.LIBPATH[]) * ":" * string(Base.ENV["LD_LIBRARY_PATH"]) # not sure if this is needed
+			#ENV["PATH"]= boost_jll.artifact_dir * "/bin;" *  ENV["PATH"] 
+			
+			#ENV["LD_LIBRARY_PATH"] = string(Qt_jll.LIBPATH) * ":" * ENV["LD_LIBRARY_PATH"] # do not sure why this is not already there
+			#ENV["LD_LIBRARY_PATH"] = string(CompilerSupportLibraries_jll.LIBPATH) * ":" * ENV["LD_LIBRARY_PATH"] # do not sure why this is not already there
+			#ENV["LD_LIBRARY_PATH"] = string(FreeType2_jll.LIBPATH) * ":" * ENV["LD_LIBRARY_PATH"] # do not sure why this is not already there
+		end
 	end
 
 	#@printf "new_env: %s  \n" typeof(new_env)
@@ -215,12 +220,14 @@ Have to call `qstart()` before, though.
 """
 function qstop()
 	global qwtwLibHandle, qwtStopH
+	global started
 	
 	if qwtwLibHandle != 0
 		if (qwtStopH != 0) 
-			started = false
 			ccall(qwtStopH,  Cvoid, ())
-			@printf "qwtw stopped\n"
+			#@printf "qwtw stopped\n"
+		else
+			@printf "error: was not started correctly\n"
 		end
 		Libdl.dlclose(qwtwLibHandle)
 	else
@@ -228,6 +235,8 @@ function qstop()
 		return
 	end
 	qwtwLibHandle = 0
+	started = false
+	return
 end
 
 """
@@ -242,7 +251,7 @@ function qversion() :: String
 		return "not started yet"
 	end
 	v = zeros(UInt8, 2048)
-	@printf "qwtwc version: "
+	#@printf "qwtwc version: "
 	bs = ccall(qwtwVersionH, Int32, (Ptr{UInt8}, Int32), v, 2040);
 	#return bytestring(pointer(v))
 	cmd = unsafe_string(pointer(v), bs);
@@ -607,13 +616,22 @@ function qtitle(s::String)
 	end
 
 	ccall(qwywTitleH, Cvoid, (Ptr{UInt8},), s);
-end;
+end
 
+"""
+	qStarted()
+does it started or not yet.
+"""
+function qStarted()
+	global started
+	return started
+end
 
 export qfigure, qfmap, qplot, qplot1, qplot2, qxlabel,  qylabel, qtitle
 export qimportant, qclear, qstart, qstop, qversion, qsmw
 export traceit
 export  qEnableCoordBroadcast, qDisableCoordBroadcast
+export qStarted
 #export qplot3d, qf3d,
 
 end # module

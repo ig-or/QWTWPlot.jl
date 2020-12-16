@@ -142,6 +142,19 @@ qplot2(x, y, t, "$N test 1", " tb", 1, 5)
 qplot2(x1, y1, t, "$N test 2", " eg", 1, 3)
 qxlabel("?"); qylabel("?"); qtitle("$N points test");
 #
+#qfigure()
+#qplot(t, x, "ref test 1", "-b", 2)
+#qplot(t, y, "ref test 2", "-m", 2)
+#qxlabel("time"); qylabel("money");
+#qtitle("another big plot (2 x $N points)");
+#
+#qfigure()
+#qplot(t, x1, "ref test 1", "-b", 2)
+#qplot(t, y1, "ref test 2", "-m", 2)
+#qxlabel("time"); qylabel("value");
+#qtitle("one more big plot (2 x $N points)");
+
+#
 ## now lets try to draw a map;
 #
 #mwn = 4 # for this small example, we have only 4 points
