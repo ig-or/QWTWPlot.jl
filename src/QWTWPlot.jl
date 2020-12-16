@@ -9,7 +9,7 @@ module QWTWPlot
 using Printf
 using Libdl
 
-#import Qt_jll
+import Qt_jll
 import qwtw_jll
 #import CompilerSupportLibraries_jll
 #import FreeType2_jll
@@ -103,7 +103,7 @@ function qstart(;debug = false)::Int32
 	saveEnv()
 		
 	@static if Sys.iswindows() 
-		#ENV["QT_PLUGIN_PATH"]=Qt_jll.artifact_dir * "\\plugins"	
+		ENV["QT_PLUGIN_PATH"]=Qt_jll.artifact_dir * "\\plugins"	
 		ENV["PATH"]= string(qwtw_jll.PATH[]) * ";" *  string(ENV["PATH"])
 		ENV["PATH"]= string(qwtw_jll.LIBPATH[]) * ";" *  string(ENV["PATH"])
 		
