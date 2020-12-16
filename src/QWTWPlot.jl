@@ -61,8 +61,13 @@ function restoreEnv()
 	return
 end
 
-# start qwtw "C" library and attach handlers to it
-# if debug, will try enable debug print out
+"""
+	qstart(;debug = false)::Int32
+start qwtw "C" library. 
+
+Without it, nothing will work. Call it before any other functions.
+if debug, will try to enable debug print out.
+"""
 function qstart(;debug = false)::Int32
 	qwtw_libName = "nolib"
 	if debug
@@ -201,7 +206,13 @@ function qstart(;debug = false)::Int32
 	return test
 end
 
-# close everything and detach from qwtw library  (maybe useful for debugging)
+"""
+	qstop()
+close everything and detach from qwtw library.
+
+It maybe useful for debugging. What it does actually, it sends a command to the QT process to exit.
+Have to call `qstart()` before, though.
+"""
 function qstop()
 	global qwtwLibHandle, qwtStopH
 	
@@ -219,7 +230,12 @@ function qstop()
 	qwtwLibHandle = 0
 end
 
-# return version info (as string); 
+"""
+	qversion() :: String
+
+useful for debugging.
+return version info (as string); 
+"""
 function qversion() :: String
 	global qwtwVersionH, qwtwLibHandle
 	if qwtwLibHandle == 0
@@ -236,7 +252,7 @@ end
 
 # looks like not used anymore
 function traceit( msg )
-      global g_bTraceOn
+     # global g_bTraceOn
       if ( true )
          bt = backtrace() ;
          s = sprint(io->Base.show_backtrace(io, bt))
@@ -244,9 +260,14 @@ function traceit( msg )
       end
 end
 
-# create a new plot window, OR make plot (with this ID) 'active'
-# looks like "n" have to be an integer number (this plot ID)
-# now this plot is the "active plot"
+"""
+	qfigure(n)
+create a new plot window, OR make plot (with this ID `n`) 'active'.
+
+looks like `n` have to be an integer number (this plot ID, or zero if you do not care).
+after this function, this plot is the "active plot". 
+If `n == 0` then another new plot will be created.
+"""
 function qfigure(n)
 	global qwtwFigureH
 	ccall(qwtwFigureH, Cvoid, (Int32,), n);
@@ -256,8 +277,12 @@ function qfigure()
 	qfigure(0);
 end;
 
-# create a new  plot window to draw on a map (with specific window ID)
-# 'n' is Int32
+"""
+	qfmap(n)
+Not working now. Maybe later.
+create a new  plot window to draw on a map (with specific window ID)
+'n' is Int32
+"""
 function qfmap(n)
 	global qwtwTopviewH, qwtwLibHandle
 	if qwtwLibHandle == 0
@@ -268,15 +293,21 @@ function qfmap(n)
 	ccall(qwtwTopviewH, Cvoid, (Int32,), n);
 end;
 
+
 # create a new  window to draw a 3D points (QT engine)
 #function qf3d(n)
 #	global qwtwFigure3DH
 #	ccall(qwtwFigure3DH, Cvoid, (Int32,), n);
 #end;
 
-#=  set up an importance status for next lines. looks like '0' means 'not important'
-'not important' will not participate in 'clipping'
-=#
+"""
+	qimportant(i)
+set up an importance status for next lines. 
+	
+looks like `0` means 'not important', `1` means "important.
+'not important' will not participate in 'clipping':
+	'not important' lines may be not completely inside the window.
+"""
 function qimportant(i)
 	global qwtwsetimpstatusH, qwtwLibHandle
 	if qwtwLibHandle == 0
@@ -287,20 +318,24 @@ function qimportant(i)
 	ccall(qwtwsetimpstatusH, Cvoid, (Int32,), i);
 end
 
-#= close all the plots
-=#
+"""
+	qclear()
+close all the plots
+"""
 function qclear()
 	global qwtwCLearH, qwtwLibHandle
 	if qwtwLibHandle == 0
 		@printf "not started (was qstart() called?)\n"
 		return
 	end
-
 	
 	ccall(qwtwCLearH, Cvoid, ());
 end
 
-# open/show "main control window"
+"""
+	qsmw()
+open/show "main control window".
+"""
 function qsmw()
 	global qwtwMWShowH, qwtwLibHandle
 	if qwtwLibHandle == 0
@@ -311,21 +346,31 @@ function qsmw()
 	ccall(qwtwMWShowH, Cvoid, ());
 end
 
-# plot normal lines
-#
-# x and y:   the points
-# name:      name for this line
-# style: 	 how to draw a line
-# lineWidth is a line width
-# symSize:	 size of the symbols, if they are used in 'style' spec
-#
-# what does 'style' parameter means? It's a string which has 1 or 2 or 3 symbols. 
-# Look at two places for the explanation:
-# 	 (1) example code (  https://github.com/ig-or/QWTwPlot.jl/blob/master/src/qwexample.jl  )
-#	 (2) C spec:   https://github.com/ig-or/qwtw/wiki/line-styles
+"""
+qplot(x::Vector{Float64}, y::Vector{Float64}, name::String, style::String, lineWidth, symSize)
 
-function qplot(x::Vector{Float64}, y::Vector{Float64}, name::String, style::String,
-		lineWidth, symSize)
+plot normal lines.
+
+#Parameters:
+
+x and y:   the points.
+
+name:      	name for this line.
+
+style: 	 	how to draw a line.
+
+lineWidth:	is a line width.
+
+symSize:	size of the symbols, if they are used in 'style' spec.
+
+what does 'style' parameter means? It's a string which has 1 or 2 or 3 symbols. 
+
+Look at two places for the detail explanation:
+* example code  https://github.com/ig-or/QWTWPlot.jl/blob/master/src/qwexample.jl   
+* https://github.com/ig-or/QWTWPlot.jl/blob/master/docs/line-styles.md
+"""
+function qplot(x::Vector{Float64}, y::Vector{Float64}, name::String, style::String="-b",
+		lineWidth=1, symSize=1)
 	global qwtwPlotH, qwtwLibHandle
 	if qwtwLibHandle == 0
 		@printf "not started (was qstart() called?)\n"
@@ -349,18 +394,26 @@ function qplot(x::Vector{Float64}, y::Vector{Float64}, name::String, style::Stri
 		@printf "qplot: error #2\n"
 		traceit("error #2")
 	end
-end;
+	return
+end	
 
-# plot lines without symbols (simplyfied version of the previous function)
-function qplot(x::Vector{Float64}, y::Vector{Float64}, name::String, style::String, lineWidth)
-	qplot(x, y, name, style, lineWidth, 1)
-end;
+"""
+qplot1(x::Vector{Float64}, y::Vector{Float64}, name::String, style::String, symSize)
 
-# draw symbols with optional line width = 1
-#
-#
-# 'w' is a symbol size
-function qplot1(x::Vector{Float64}, y::Vector{Float64}, name::String, style::String, w)
+plot lines with line width == 1.
+
+x and y:   the points   
+name:      	name for this line   
+style: 	 	how to draw a line   
+symSize:	size of the symbols  
+
+what does 'style' parameter means? It's a string which has 1 or 2 or 3 symbols. 
+Look at two places for the detail explanation:
+
+* example code  https://github.com/ig-or/QWTWPlot.jl/blob/master/src/qwexample.jl
+* https://github.com/ig-or/QWTWPlot.jl/blob/master/docs/line-styles.md
+"""
+function qplot1(x::Vector{Float64}, y::Vector{Float64}, name::String, style::String, symSize)
 	global qwtwPlotH, qwtwLibHandle
 	if qwtwLibHandle == 0
 		@printf "not started (was qstart() called?)\n"
@@ -375,10 +428,16 @@ function qplot1(x::Vector{Float64}, y::Vector{Float64}, name::String, style::Str
 	if (n == 0) || (n1 ==0) || (n != n1)
 		error("qplot1: wrong array length")
 	end
-	ww::Int32 = w;
-	ccall(qwtwPlotH, Cvoid, (Ptr{Float64}, Ptr{Float64}, Int32, Ptr{UInt8}, Ptr{UInt8}, Int32, Int32),
-		x, y, n, name, style, 1, ww);
+	ww::Int32 = symSize;
+	try
+		ccall(qwtwPlotH, Cvoid, (Ptr{Float64}, Ptr{Float64}, Int32, Ptr{UInt8}, Ptr{UInt8}, Int32, Int32),
+			x, y, n, name, style, 1, ww);
+	catch ex
+		@printf "qplot1 ERROR\n"
+		throw(ex)
+	end
 	sleep(0.025)
+
 
 end;
 
@@ -399,25 +458,30 @@ end;
 #
 
 
+""" 
+	qEnableCoordBroadcast(x::Vector{Float64}, y::Vector{Float64}, z::Vector{Float64}, time::Vector{Float64})
+Enable UDP client.
 
-#  In case you'd like to connect some external software to this library,
-# it has UDP client and server inside. If/when you will move a marker, it will 
-# broadcast 'marker information' via UDP. Other way should also work: if some other application will broadcast UDP with marker info,
-# all the markers in this library supposed to be updated
-#
-# parameters: x, y,  and z are the vectors describing the line in 3D space, 
-# and 'time' is an additional time information, for every point of the line
-# 
-# it will send marker info to UDP port 49561
-# incoming (to this library) UDP  port number: 49562, and IP address is "127.0.0.1"
-# 
-# incoming message format:  "CRDS"<x><y><z>"FFFF"
-# <x>, <y>, and <z> are  Float64 point coordinates, 8 bytes each
-# so this message contains 4 + 3*8 + 4 bytes
-#
-# outgoing message format is approximately the same: "EEEE"<x><y><z>"FFFF"
-# 
-#
+In case you'd like to connect to some external software from this library,
+it has UDP client and server inside. If/when you will move a marker, it will 
+broadcast 'marker information' via UDP. 
+Other way should also work: if some other application will broadcast UDP with marker info,
+all the markers in this library supposed to be updated.
+
+parameters: x, y,  and z are the vectors describing the line in 3D space;
+and 'time' is an additional time information, for every point of the line.
+
+It will send out marker info to UDP port 49561.
+Incoming (to this library) UDP  port number is 49562, and IP address is "127.0.0.1".
+
+Incoming message format:  'CRDS"<x><y><z>"FFFF', where
+<x>, <y>, and <z> are  Float64 point coordinates, 8 bytes each
+so this message contains 4 + 3*8 + 4 bytes
+outgoing message format is approximately the same: "EEEE"<x><y><z>"FFFF"
+
+If UDP client is enabled, server will also start. For all this to work, some firewall rules have to be added probably, 
+line 'allow 49561 and 49562 ports for the local host'.
+"""
 function qEnableCoordBroadcast(x::Vector{Float64}, y::Vector{Float64}, z::Vector{Float64},
 	 		time::Vector{Float64})
 	global qwtEnableBroadcastH, qwtwLibHandle
@@ -436,12 +500,15 @@ function qEnableCoordBroadcast(x::Vector{Float64}, y::Vector{Float64}, z::Vector
 			 Ptr{Float64}, Int32),
 		x, y, z , time, n);
 	sleep(0.025)
-
+	return
 end;
 
-#
-# disable all this UDP -related stuff
-#
+"""
+	qDisableCoordBroadcast()
+disable all this UDP -related stuff.
+
+This function will stop UDP server and client.
+"""
 function qDisableCoordBroadcast()
 	global qwtDisableBroadcastH, qwtwLibHandle
 	if qwtwLibHandle == 0
@@ -456,15 +523,34 @@ function qDisableCoordBroadcast()
 end;
 
 
+"""
+qplot2(x::Array{Float64}, y::Array{Float64}, time::Array{Float64}, name::String, style::String, lineWidth=1, symSize=1)
 
-# plot with time info (symbol size == 1, very small)
-# 'x', 'y': the line
-# 'name' name ofthis line
-# 'style'  the line style
-# 'w' line width
-# 'time' time info, for every point
-#
-function qplot2(x::Array{Float64}, y::Array{Float64}, name::String, style::String, w, time::Array{Float64})
+plot with additional parameter (time?) info.
+
+## Parameters:
+```
+'x', 'y': the line
+'name' name of this line
+'style'  the line style
+'lineWidth' line width
+'symSize' symbol size; 
+'time' time info, for every point
+```
+
+## Example
+```julia-repl
+julia> time=collect(0.0:0.01:10.0)
+x = sin.(time)
+y = cos.(time)
+qfigure()
+qplot(time, x + y, "function 1", "-b", 3)
+qfigure()
+qplot2(x, y, time, "function 2", "-m", 3)
+```
+Now use marker on both plots and see that it moves on both plots.
+"""
+function qplot2(x::Array{Float64}, y::Array{Float64}, time::Array{Float64}, name::String, style::String, lineWidth=1, symSize=1)
 	global qwtwPlot2H, qwtwLibHandle
 	if qwtwLibHandle == 0
 		@printf "not started (was qstart() called?)\n"
@@ -473,38 +559,18 @@ function qplot2(x::Array{Float64}, y::Array{Float64}, name::String, style::Strin
 
 	@assert (length(x) == length(y))
 	n = length(x)
-	ww::Int32 = w;
+	ww::Int32 = lineWidth;
+	s::Int32 = symSize;
 	ccall(qwtwPlot2H, Cvoid, (Ptr{Float64}, Ptr{Float64}, Int32, Ptr{UInt8}, Ptr{UInt8}, Int32, Int32, Ptr{Float64}),
-		x, y, n, name, style, ww, 1, time);
+		x, y, n, name, style, ww, s, time);
 	sleep(0.025)
-
+	return
 end;
 
-# plot  with time info (line width == 1)
-# 'x', 'y': the line
-# 'name' name ofthis line
-# 'style'  the line style
-# 'w': symbol size
-# 
-# 'time' time info, for every point
-#
-function qplot2p(x::Array{Float64}, y::Array{Float64}, name::String, style::String, w, time::Array{Float64})
-	global qwtwPlot2H, qwtwLibHandle
-	if qwtwLibHandle == 0
-		@printf "not started (was qstart() called?)\n"
-		return
-	end
-
-	@assert (length(x) == length(y))
-	n = length(x)
-	ww::Int32 = w;
-	ccall(qwtwPlot2H, Cvoid, (Ptr{Float64}, Ptr{Float64}, Int32, Ptr{UInt8}, Ptr{UInt8}, Int32, Int32, Ptr{Float64}),
-		x, y, n, name, style, 1, ww, time);
-	sleep(0.025)
-
-end;
-
-# put label on horizontal axis
+"""
+	qxlabel(s::String)
+put a label on the horizontal axis.
+"""
 function qxlabel(s::String)
 	global qwtwXlabelH, qwtwLibHandle
 	if qwtwLibHandle == 0
@@ -515,7 +581,10 @@ function qxlabel(s::String)
 	ccall(qwtwXlabelH, Cvoid, (Ptr{UInt8},), s);
 end;
 
-# put label on left vertical axis
+"""
+	qylabel(s::String)
+put a label on the left vertical axis
+"""
 function qylabel(s::String)
 	global qwtwYlabelH, qwtwLibHandle
 	if qwtwLibHandle == 0
@@ -526,7 +595,10 @@ function qylabel(s::String)
 	ccall(qwtwYlabelH, Cvoid, (Ptr{UInt8},), s);
 end;
 
-# put title on current plot
+"""
+	qtitle(s::String)
+put a title on current plot.
+"""
 function qtitle(s::String)
 	global qwywTitleH, qwtwLibHandle
 	if qwtwLibHandle == 0
@@ -538,7 +610,7 @@ function qtitle(s::String)
 end;
 
 
-export qfigure, qfmap, qsetmode, qplot, qplot1, qplot2, qplot2p, qxlabel,  qylabel, qtitle
+export qfigure, qfmap, qplot, qplot1, qplot2, qxlabel,  qylabel, qtitle
 export qimportant, qclear, qstart, qstop, qversion, qsmw
 export traceit
 export  qEnableCoordBroadcast, qDisableCoordBroadcast

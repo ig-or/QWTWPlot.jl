@@ -96,7 +96,7 @@ qplot(t1, y1, "points and line #2", "-tm", 2, 10)
 # create a circle on another plot window:
 x = sin.(t .* (2.0*pi/tMax)); y = cos.(t .* (2.0*pi/tMax));
 qfigure(3);
-qplot2(x, y, "circle #1", "-r", 2, t)
+qplot2(x, y, t, "circle #1", "-r", 2)
 qtitle("circle")
 
 # now press "[]" buttol in order to make a circle look like circle
@@ -107,7 +107,7 @@ qtitle("circle")
 t1 = Array(range(0.,  stop=2. * pi, length=8));
 x1 = 0.5*sin.(t1);
 y1 = 0.5*cos.(t1);
-qplot2p(x1, y1, "circle #2", " ec", 20, t1)
+qplot2(x1, y1, t1, "circle #2", " ec", 1, 20)
 
 ## small 3D example: - disabled (not supported now because of the license limitations) 
 ##qf3d(124)
@@ -138,8 +138,8 @@ y1 = similar(t)
 @. x1 = sin(t) * R1 + sin(t * 11.) * R2 + sin(t * 31.) * R3 + randn() * R3*0.015
 @. y1 = cos(t) * R1 + cos(t * 8.) * R2 + cos(t * 23.) * R3 + randn() * R3*0.015
 qfigure()
-qplot2p(x, y, "$N test 1", " tb", 5, t)
-qplot2p(x1, y1, "$N test 2", " eg", 3, t)
+qplot2(x, y, t, "$N test 1", " tb", 1, 5)
+qplot2(x1, y1, t, "$N test 2", " eg", 1, 3)
 qxlabel("?"); qylabel("?"); qtitle("$N points test");
 #
 ## now lets try to draw a map;
@@ -151,15 +151,15 @@ qxlabel("?"); qylabel("?"); qtitle("$N points test");
 #
 #
 #qfmap(5)
-#qplot2p(east, north, "trajectory #1", "-rb",  20, t4);
+#qplot2(east, north, t4"trajectory #1", "-rb",  20);
 #qtitle("top view test");
 #
 ##another map:
 #north1 = [65.688713, 65.698713, 65.678713, 65.60]; # coords in degrees
 #east1 = [27.901073, 28.111073, 28.005073, 27.9]; # coords in degrees
 #qfmap(6)
-#qplot2(east1, north1, "trajectory #2", "-rb",  2, t4);
-#qplot2(east1, north1, "points", " er",  20, t4);
+#qplot2(east1, north1, t4, "trajectory #2", "-rb",  20);
+#qplot2(east1, north1, t4, "points", " er",  20);
 #qtitle("top view test #2");
 
 
