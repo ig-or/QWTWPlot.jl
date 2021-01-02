@@ -10,7 +10,7 @@ It is very useful for data analysis (like if you have a dynamic systems with a b
 
 ## how to install it
 
-* just install at as usual Julia package, with `] add https://github.com/ig-or/QWTWPlot.jl` .  BTW, this is possible because of https://github.com/JuliaPackaging/BinaryBuilder.jl
+* just install it as usual Julia package, with `] add https://github.com/ig-or/QWTWPlot.jl` .  BTW, this is possible because of https://github.com/JuliaPackaging/BinaryBuilder.jl
 * look at usage example here: https://github.com/ig-or/QWTWPlot.jl/blob/master/src/qwexample.jl
 
 

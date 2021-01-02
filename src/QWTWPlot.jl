@@ -11,6 +11,7 @@ using Libdl
 
 import Qt_jll
 import qwtw_jll
+import marble_jll
 #import CompilerSupportLibraries_jll
 #import FreeType2_jll
 #import boost_jll
@@ -24,7 +25,7 @@ end
 qwtwLibHandle = 0
 qwtwFigureH = 0
 #qwtwFigure3DH = 0 # not supported because of license restrictions..    maybe later... 
-qwtwTopviewH = 0
+qwtwMapViewH = 0
 qwtwsetimpstatusH = 0
 qwtwCLearH = 0
 qwtwPlotH = 0
@@ -77,7 +78,7 @@ function qstart(;debug = false, qwtw_test = false)::Int32
 	# this could be still useful:
 	#if debug qwtw_libName *= "d"; end
 
-	global qwtwLibHandle, qwtwFigureH, qwtwTopviewH,  qwtwsetimpstatusH, qwtwCLearH, qwtwPlotH
+	global qwtwLibHandle, qwtwFigureH, qwtwMapViewH,  qwtwsetimpstatusH, qwtwCLearH, qwtwPlotH
 	global qwtwPlot2H, qwtwXlabelH, qwtwYlabelH, qwywTitleH, qwtwVersionH, qwtwMWShowH
 	global qwtwPlot3DH, qwtwFigure3DH, qwtEnableBroadcastH, qwtDisableBroadcastH
 	global qwtStartH, qwtStopH, started
@@ -107,14 +108,17 @@ function qstart(;debug = false, qwtw_test = false)::Int32
 
 	saveEnv()
 
+	marbleDataPath = joinpath(marble_jll.artifact_dir, "data")
+	marblePluginPath = joinpath(marble_jll.artifact_dir, "plugins")
+
 	if qwtw_test
 		@printf "qwtw debug; loading %s .. \n" qwtw_libName
 		@printf "\nPATH = %s\n\n" ENV["PATH"]
 	else
 		@static if Sys.iswindows() 
 			ENV["QT_PLUGIN_PATH"]=Qt_jll.artifact_dir * "\\plugins"	
-			ENV["PATH"]= string(qwtw_jll.PATH[]) * ";" *  string(ENV["PATH"])
-			ENV["PATH"]= string(qwtw_jll.LIBPATH[]) * ";" *  string(ENV["PATH"])
+			ENV["PATH"]= string(qwtw_jll.PATH) * ";" *  string(ENV["PATH"])
+			ENV["PATH"]= string(qwtw_jll.LIBPATH) * ";" *  string(ENV["PATH"])
 			
 			#ENV["PATH"]= boost_jll.artifact_dir * "\\bin;" *  ENV["PATH"] 
 			#ENV["PATH"]= qwt_jll.artifact_dir * "\\bin;" *  ENV["PATH"] 
@@ -124,9 +128,9 @@ function qstart(;debug = false, qwtw_test = false)::Int32
 			#new_env["PATH"]= FreeType2_jll.artifact_dir * "\\bin;" *  ENV["PATH"] 
 					
 		else
-			#ENV["QT_PLUGIN_PATH"]=string(Qt_jll.artifact_dir) * "/plugins"			
-			ENV["PATH"]=   string(qwtw_jll.PATH[]) * ":" *  string(Base.ENV["PATH"])
-			ENV["LD_LIBRARY_PATH"] = string(qwtw_jll.LIBPATH[]) * ":" * string(Base.ENV["LD_LIBRARY_PATH"]) # not sure if this is needed
+			ENV["QT_PLUGIN_PATH"]=string(Qt_jll.artifact_dir) * "/plugins"			
+			ENV["PATH"]=   string(qwtw_jll.PATH) * ":" *  string(Base.ENV["PATH"])
+			ENV["LD_LIBRARY_PATH"] = string(qwtw_jll.LIBPATH) * ":" * string(Base.ENV["LD_LIBRARY_PATH"]) # not sure if this is needed
 			#ENV["PATH"]= boost_jll.artifact_dir * "/bin;" *  ENV["PATH"] 
 			
 			#ENV["LD_LIBRARY_PATH"] = string(Qt_jll.LIBPATH) * ":" * ENV["LD_LIBRARY_PATH"] # do not sure why this is not already there
@@ -156,9 +160,10 @@ function qstart(;debug = false, qwtw_test = false)::Int32
 		#qwtwFigure3DH = Libdl.dlsym(qwtwLibHandle, "qwtfigure3d")
 
 		try
-			qwtwTopviewH = Libdl.dlsym(qwtwLibHandle, "topview")
+			qwtwMapViewH = Libdl.dlsym(qwtwLibHandle, "qwtmap")
 		catch
-			#@printf "WARNING: topview functions disabled (looks like no [marble] support)\n"
+			qwtwMapViewH = 0
+			@printf "WARNING: topview functions disabled (looks like no [marble] support)\n"
 		end
 
 		qwtwsetimpstatusH = Libdl.dlsym(qwtwLibHandle, "qwtsetimpstatus")
@@ -187,9 +192,11 @@ function qstart(;debug = false, qwtw_test = false)::Int32
 		test = 1
 		try
 			if debug
-				test = ccall(qwtStartDebugH, Int32, (Int32,), 10); 
+				test = ccall(qwtStartDebugH, Int32, (Ptr{UInt8}, Ptr{UInt8}, Int32), 
+					marbleDataPath, marblePluginPath, 10); 
 			else
-				test = ccall(qwtStartH, Int32, ()); # very important to call this in the very beginning
+				test = ccall(qwtStartH, Int32, (Ptr{UInt8}, Ptr{UInt8}), 
+					marbleDataPath, marblePluginPath); # very important to call this in the very beginning
 			end
 		catch ex
 			restoreEnv()
@@ -293,13 +300,17 @@ create a new  plot window to draw on a map (with specific window ID)
 'n' is Int32
 """
 function qfmap(n)
-	global qwtwTopviewH, qwtwLibHandle
+	global qwtwMapViewH, qwtwLibHandle
 	if qwtwLibHandle == 0
 		@printf "not started (was qstart() called?)\n"
 		return
 	end
+	if qwtwMapViewH == 0
+		@printf "map vew not supported, sorry\n"
+		return
+	end
 
-	ccall(qwtwTopviewH, Cvoid, (Int32,), n);
+	ccall(qwtwMapViewH, Cvoid, (Int32,), n);
 end;
 
 

@@ -154,26 +154,26 @@ qxlabel("?"); qylabel("?"); qtitle("$N points test");
 #qxlabel("time"); qylabel("value");
 #qtitle("one more big plot (2 x $N points)");
 
-#
-## now lets try to draw a map;
-#
-#mwn = 4 # for this small example, we have only 4 points
-#north = [55.688713, 55.698713, 55.678713, 55.60]; # coords in degrees
-#east = [37.901073, 37.911073, 37.905073, 37.9]; # coords in degrees
-#t4 = Array(range(0.,stop=tMax, length=4)); # create corresponding time info (for our cool magic markers)
-#
-#
-#qfmap(5)
-#qplot2(east, north, t4"trajectory #1", "-rb",  20);
-#qtitle("top view test");
-#
-##another map:
-#north1 = [65.688713, 65.698713, 65.678713, 65.60]; # coords in degrees
-#east1 = [27.901073, 28.111073, 28.005073, 27.9]; # coords in degrees
-#qfmap(6)
-#qplot2(east1, north1, t4, "trajectory #2", "-rb",  20);
-#qplot2(east1, north1, t4, "points", " er",  20);
-#qtitle("top view test #2");
+
+# now lets try to draw a map;
+
+mwn = 4 # for this small example, we have only 4 points
+north = [55.688713, 55.698713, 55.678713, 55.60]; # coords in degrees
+east = [37.901073, 37.911073, 37.905073, 37.9]; # coords in degrees
+t4 = Array(range(0.,stop=tMax, length=4)); # create corresponding time info (for our cool magic markers)
+
+
+qfmap(5)
+qplot2(east, north, t4, "trajectory #1", "-rb",  3);
+qtitle("top view test");
+
+#another map:
+north1 = [65.688713, 65.698713, 65.678713, 65.60]; # coords in degrees
+east1 = [27.901073, 28.111073, 28.005073, 27.9]; # coords in degrees
+qfmap(6)
+qplot2(east1, north1, t4, "trajectory #2", "-rb",  3);
+qplot2(east1, north1, t4, "points", " er",  3);
+qtitle("top view test #2");
 
 
 # if everything is working as you need, you can
