@@ -63,6 +63,58 @@ function restoreEnv()
 end
 
 """
+function addEnvItem(item, var)
+	add something to the ENV from the beginning
+	item -  what to add
+	var - where to add
+
+"""
+function addEnvItem(item, var::String; debug = false)
+	dv = ":"
+	@static if Sys.iswindows()
+		dv = ";"
+	end
+	useDV = true
+	try
+		test = ENV[var]
+	catch ex # no such variable
+		useDV = false
+	end
+
+	item2Add = ""
+	if typeof(item) == String
+		item2Add = item
+		if debug
+			@printf "adding [%s] to [%s] \n" item2Add  var
+		end
+	elseif typeof(item) == Base.RefValue{String}
+		item2Add = item[]
+		if debug
+			@printf "adding [%s] to [%s] \n" item2Add  var
+		end
+	else 
+		@printf "WARNING: trying to add following item to %s : " var
+		print(item)
+		item2Add = item
+	end
+
+	try
+		if useDV
+			ENV[var] = item2Add * dv * ENV[var]
+		else
+			ENV[var] = item2Add 
+			if debug
+				@printf " new ENV %s created \n " var
+			end
+		end
+	catch ex
+		@printf "ERROR while adding item to [%s]: " var
+		print(ex)
+		print(item)
+	end
+end
+
+"""
 	qstart(;debug = false)::Int32
 start qwtw "C" library. 
 
@@ -117,8 +169,8 @@ function qstart(;debug = false, qwtw_test = false)::Int32
 	else
 		@static if Sys.iswindows() 
 			ENV["QT_PLUGIN_PATH"]=Qt_jll.artifact_dir * "\\plugins"	
-			ENV["PATH"]= string(qwtw_jll.PATH) * ";" *  string(ENV["PATH"])
-			ENV["PATH"]= string(qwtw_jll.LIBPATH) * ";" *  string(ENV["PATH"])
+			addEnvItem(qwtw_jll.PATH, "PATH")
+			addEnvItem(qwtw_jll.LIBPATH, "PATH")
 			
 			#ENV["PATH"]= boost_jll.artifact_dir * "\\bin;" *  ENV["PATH"] 
 			#ENV["PATH"]= qwt_jll.artifact_dir * "\\bin;" *  ENV["PATH"] 
@@ -126,11 +178,11 @@ function qstart(;debug = false, qwtw_test = false)::Int32
 
 			#ENV["PATH"]= CompilerSupportLibraries_jll.artifact_dir * "\\bin;" *  ENV["PATH"] 
 			#new_env["PATH"]= FreeType2_jll.artifact_dir * "\\bin;" *  ENV["PATH"] 
-					
 		else
-			ENV["QT_PLUGIN_PATH"]=string(Qt_jll.artifact_dir) * "/plugins"			
-			ENV["PATH"]=   string(qwtw_jll.PATH) * ":" *  string(Base.ENV["PATH"])
-			ENV["LD_LIBRARY_PATH"] = string(qwtw_jll.LIBPATH) * ":" * string(Base.ENV["LD_LIBRARY_PATH"]) # not sure if this is needed
+			ENV["QT_PLUGIN_PATH"]=string(Qt_jll.artifact_dir) * "/plugins"	
+			addEnvItem(qwtw_jll.PATH, "PATH")	
+			addEnvItem(qwtw_jll.LIBPATH, "LD_LIBRARY_PATH")	
+
 			#ENV["PATH"]= boost_jll.artifact_dir * "/bin;" *  ENV["PATH"] 
 			
 			#ENV["LD_LIBRARY_PATH"] = string(Qt_jll.LIBPATH) * ":" * ENV["LD_LIBRARY_PATH"] # do not sure why this is not already there
