@@ -5,13 +5,16 @@ This is another 2D plotting tool for Julia language.  It is based on `qwtw` `C` 
 quickly draw a lot of points:
  ![](docs/img/logo.png "big plot")
 
-Current version should work for `Windows` and for `Linux` x64 bits.
+Current version should work for `Windows` _and_ for `Linux` x64 bits.
 It is very useful for data analysis (like if you have a dynamic systems with a big state vector, sometimes its difficult to say how one variable influence other variable).
 
 ## how to install it
 
-* just install it as usual Julia package, with `] add https://github.com/ig-or/QWTWPlot.jl` .  BTW, this is possible because of https://github.com/JuliaPackaging/BinaryBuilder.jl
-* look at usage example here: https://github.com/ig-or/QWTWPlot.jl/blob/master/src/qwexample.jl
+* just install it as usual Julia package, with `] add QWTWPlot.jl` .  
+
+BTW, this is possible because of https://github.com/JuliaPackaging/BinaryBuilder.jl
+
+look at usage example here: https://github.com/ig-or/QWTWPlot.jl/blob/master/src/qwexample.jl
 
 
 ## the most useful features
@@ -19,14 +22,14 @@ It is very useful for data analysis (like if you have a dynamic systems with a b
 * all plots are "connected" - this makes it very easy to analyze small parts of long dynamic process with a lot of variables;  what this means:
 
 
-* when you point a 'marker' on one plot, you can see markers on all other plots pointing on the 'same place'
+  * when you point a 'marker' on one plot, you can see markers on all other plots pointing on the 'same place'
 
 how "markers" looks like:
 
  ![](docs/img/marker.png "marker examples")
 
 
-* after you select some interesting area on plot "X", and then  press right plot button ("CLIP" button),  all the other plots are resizing accordingly ("time" interval on all other plots became equal to this interval on plot "X")
+  * after you select some interesting area on plot "X", and then press right plot button ("CLIP" button),  all the other plots are resizing accordingly ("time" interval on all other plots became equal to this interval on plot "X")
 
 First, select some interesting area on one plot:
 
@@ -53,14 +56,7 @@ After this (in new small window) select lines for which you'd like to create a P
 
 * this library have UDP client&server, so it can display incoming "marker" messages and send out marker positions when using "marker gui"
 
-* how to create a line style for the plots: hints are here  https://github.com/ig-or/QWTWPlot.jl/blob/master/docs/line-styles.md
-
-now "map" functionality is disabled. Maybe add it back later. Just needs " KDE Marble package" to be added to `JuliaPackaging/Yggdrasil`
-
-
-
-
-
-
-
+ * Maps functionality returned. You can draw on maps. Please see example for the details.
+ ![](docs/img/map-example.png "marker examples")
+ 
 

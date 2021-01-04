@@ -12,10 +12,6 @@ using Libdl
 import Qt_jll
 import qwtw_jll
 import marble_jll
-#import CompilerSupportLibraries_jll
-#import FreeType2_jll
-#import boost_jll
-#import qwt_jll
 
 function __init__()
 	# this is not OK  qwtwStart(Int64(0)) # start in normal mode
@@ -46,6 +42,10 @@ old_path = ""
 old_qtPath = ""
 oldLdLibPath = ""
 
+"""
+function saveEnv()
+	saves some of the env vars
+"""
 function saveEnv()
 	global old_path, old_qtPath, oldLdLibPath
 	try old_path = ENV["PATH"]; catch end
@@ -54,6 +54,10 @@ function saveEnv()
 	return
 end
 
+"""
+function restoreEnv()
+	restores env vars back
+"""
 function restoreEnv()
 	global old_path, old_qtPath, oldLdLibPath
 	ENV["PATH"] = old_path
@@ -62,12 +66,26 @@ function restoreEnv()
 	return
 end
 
+function printEnv()
+	try
+		@printf "\n\tPATH = %s \n\n" String(ENV["PATH"])
+		@printf "\n\tQT_PLUGIN_PATH = %s \n\n" String(ENV["QT_PLUGIN_PATH"])
+		try
+			ldp = String(ENV["LD_LIBRARY_PATH"])
+			@printf "\n\tLD_LIBRARY_PATH = %s \n\n" ldp
+		catch
+			@printf "no LD_LIBRARY_PATH\n\n"
+		end
+	catch
+		@printf "printEnv: not everything was printed \n"
+	end
+end
+
 """
 function addEnvItem(item, var)
 	add something to the ENV from the beginning
 	item -  what to add
 	var - where to add
-
 """
 function addEnvItem(item, var::String; debug = false)
 	dv = ":"
@@ -75,27 +93,31 @@ function addEnvItem(item, var::String; debug = false)
 		dv = ";"
 	end
 	useDV = true
-	try
-		test = ENV[var]
+	try # check: do we have it?
+		test = ENV[var]  # yes
 	catch ex # no such variable
 		useDV = false
 	end
 
-	item2Add = ""
-	if typeof(item) == String
+	item2Add = "" # what we will actually add
+	if typeof(item) == String # simple case
 		item2Add = item
 		if debug
 			@printf "adding [%s] to [%s] \n" item2Add  var
 		end
-	elseif typeof(item) == Base.RefValue{String}
+	elseif typeof(item) == Base.RefValue{String} # this can happen also
 		item2Add = item[]
 		if debug
 			@printf "adding [%s] to [%s] \n" item2Add  var
 		end
-	else 
+	else  # strange case
 		@printf "WARNING: trying to add following item to %s : " var
 		print(item)
-		item2Add = item
+		try
+			item2Add = String(item)
+		catch ex
+			item2Add = item
+		end
 	end
 
 	try
@@ -119,7 +141,8 @@ end
 start qwtw "C" library. 
 
 Without it, nothing will work. Call it before any other functions.
-if debug, will try to enable debug print out.
+if debug, will try to enable debug print out. A lot of info.
+qwtw_test	-> if true, will try to not modify env variables.
 """
 function qstart(;debug = false, qwtw_test = false)::Int32
 	qwtw_libName = "nolib"
@@ -132,32 +155,25 @@ function qstart(;debug = false, qwtw_test = false)::Int32
 
 	global qwtwLibHandle, qwtwFigureH, qwtwMapViewH,  qwtwsetimpstatusH, qwtwCLearH, qwtwPlotH
 	global qwtwPlot2H, qwtwXlabelH, qwtwYlabelH, qwywTitleH, qwtwVersionH, qwtwMWShowH
-	global qwtwPlot3DH, qwtwFigure3DH, qwtEnableBroadcastH, qwtDisableBroadcastH
+	global qwtEnableBroadcastH, qwtDisableBroadcastH
+	#global qwtwPlot3DH, qwtwFigure3DH
 	global qwtStartH, qwtStopH, started
 	global old_path, old_qtPath, oldLdLibPath
 
-	#if qwtwLibHandle != 0 # looks like we already started
 	if started
 		@printf "qwtw already started\n"
 		return 0
 	end
 
-	#  this part will handle OS differences
-	@static if Sys.iswindows() 
+	@static if Sys.iswindows() #  this part will handle OS differences
 		qwtw_libName = "libqwtw.dll"
 	else # hopefully this may be Linux
-		#@printf "\t non-Windows detected\n"
+		if debug
+			@printf "\t non-Windows detected\n"
+		end
 		qwtw_libName = "libqwtw.so"
 	end
-
-	#old_env = Dict()
-	#try
-	#	old_env = deepcopy(Base.ENV)
-	#catch
-	#	@printf "no ENV\n"
-	#end
-	#new_env = deepcopy(old_env)
-
+	
 	saveEnv()
 
 	marbleDataPath = joinpath(marble_jll.artifact_dir, "data")
@@ -191,81 +207,90 @@ function qstart(;debug = false, qwtw_test = false)::Int32
 		end
 	end
 
-	#@printf "new_env: %s  \n" typeof(new_env)
-	#print(new_env)
+	if debug
+		@printf "loading %s \n" qwtw_libName 
+	end	
 
-	#withenv("QT_PLUGIN_PATH"=>new_env["QT_PLUGIN_PATH"],
-	#"PATH"=>new_env["PATH"],
-	#"LD_LIBRARY_PATH"=>new_env["LD_LIBRARY_PATH"]) do
-
-	#Base.ENV = new_env
-
-		#@printf "loading %s \n" qwtw_libName 
-		try 
-			qwtwLibHandle = Libdl.dlopen(qwtw_libName)
-		catch ex
-			restoreEnv()
-			@printf "Sorry, dlopen for %s failed; something is wrong\n" qwtw_libName
-			throw(ex)
+	try 
+		qwtwLibHandle = Libdl.dlopen(qwtw_libName)
+	catch ex
+		if debug
+			printEnv();
 		end
-		qwtwFigureH = Libdl.dlsym(qwtwLibHandle, "qwtfigure")
-		#qwtwFigure3DH = Libdl.dlsym(qwtwLibHandle, "qwtfigure3d")
+		restoreEnv()
+		@printf "Sorry, dlopen for %s failed; something is wrong\n" qwtw_libName
+		throw(ex)
+	end
 
-		try
-			qwtwMapViewH = Libdl.dlsym(qwtwLibHandle, "qwtmap")
-		catch
-			qwtwMapViewH = 0
-			@printf "WARNING: topview functions disabled (looks like no [marble] support)\n"
+	qwtwFigureH = Libdl.dlsym(qwtwLibHandle, "qwtfigure")
+	#qwtwFigure3DH = Libdl.dlsym(qwtwLibHandle, "qwtfigure3d")
+
+	try
+		qwtwMapViewH = Libdl.dlsym(qwtwLibHandle, "qwtmap")
+	catch
+		qwtwMapViewH = 0
+		@printf "WARNING: topview functions disabled (looks like no [marble] support)\n"
+	end
+
+	qwtwsetimpstatusH = Libdl.dlsym(qwtwLibHandle, "qwtsetimpstatus")
+	qwtwCLearH = Libdl.dlsym(qwtwLibHandle, "qwtclear")
+	qwtwPlotH = Libdl.dlsym(qwtwLibHandle, "qwtplot")
+	#qwtwPlot3DH = Libdl.dlsym(qwtwLibHandle, "qwtplot3d")
+	qwtwPlot2H = Libdl.dlsym(qwtwLibHandle, "qwtplot2")
+	qwtwXlabelH = Libdl.dlsym(qwtwLibHandle, "qwtxlabel")
+	qwtwYlabelH = Libdl.dlsym(qwtwLibHandle, "qwtylabel")
+	qwywTitleH = Libdl.dlsym(qwtwLibHandle, "qwttitle")
+	qwtwVersionH = Libdl.dlsym(qwtwLibHandle, "qwtversion")
+	qwtwMWShowH = Libdl.dlsym(qwtwLibHandle, "qwtshowmw")
+	qwtStartH = Libdl.dlsym(qwtwLibHandle, "qtstart")
+	qwtStartDebugH = Libdl.dlsym(qwtwLibHandle, "qtstart_debug")
+	qwtStopH = Libdl.dlsym(qwtwLibHandle, "qwtclose")
+
+	try
+		qwtEnableBroadcastH = Libdl.dlsym(qwtwLibHandle, "qwtEnableCoordBroadcast")
+		qwtDisableBroadcastH = Libdl.dlsym(qwtwLibHandle, "qwtDisableCoordBroadcast")
+	catch
+		@printf "WARNING: UDP broacast disabled \n"
+	end
+
+	# hangs tight!!!!
+	#@printf "starting qstart \n"
+	test = 1
+	try
+		if debug
+			test = ccall(qwtStartDebugH, Int32, (Ptr{UInt8}, Ptr{UInt8}, Int32), 
+				marbleDataPath, marblePluginPath, 10); 
+		else
+			test = ccall(qwtStartH, Int32, (Ptr{UInt8}, Ptr{UInt8}), 
+				marbleDataPath, marblePluginPath); # very important to call this in the very beginning
 		end
-
-		qwtwsetimpstatusH = Libdl.dlsym(qwtwLibHandle, "qwtsetimpstatus")
-		qwtwCLearH = Libdl.dlsym(qwtwLibHandle, "qwtclear")
-		qwtwPlotH = Libdl.dlsym(qwtwLibHandle, "qwtplot")
-		#qwtwPlot3DH = Libdl.dlsym(qwtwLibHandle, "qwtplot3d")
-		qwtwPlot2H = Libdl.dlsym(qwtwLibHandle, "qwtplot2")
-		qwtwXlabelH = Libdl.dlsym(qwtwLibHandle, "qwtxlabel")
-		qwtwYlabelH = Libdl.dlsym(qwtwLibHandle, "qwtylabel")
-		qwywTitleH = Libdl.dlsym(qwtwLibHandle, "qwttitle")
-		qwtwVersionH = Libdl.dlsym(qwtwLibHandle, "qwtversion")
-		qwtwMWShowH = Libdl.dlsym(qwtwLibHandle, "qwtshowmw")
-		qwtStartH = Libdl.dlsym(qwtwLibHandle, "qtstart")
-		qwtStartDebugH = Libdl.dlsym(qwtwLibHandle, "qtstart_debug")
-		qwtStopH = Libdl.dlsym(qwtwLibHandle, "qwtclose")
-
-		try
-			qwtEnableBroadcastH = Libdl.dlsym(qwtwLibHandle, "qwtEnableCoordBroadcast")
-			qwtDisableBroadcastH = Libdl.dlsym(qwtwLibHandle, "qwtDisableCoordBroadcast")
-		catch
-			@printf "WARNING: UDP broacast disabled \n"
+	catch ex
+		if debug
+			printEnv();
 		end
-
-		# hangs tight!!!!
-		#@printf "starting qstart \n"
-		test = 1
-		try
-			if debug
-				test = ccall(qwtStartDebugH, Int32, (Ptr{UInt8}, Ptr{UInt8}, Int32), 
-					marbleDataPath, marblePluginPath, 10); 
-			else
-				test = ccall(qwtStartH, Int32, (Ptr{UInt8}, Ptr{UInt8}), 
-					marbleDataPath, marblePluginPath); # very important to call this in the very beginning
-			end
-		catch ex
-			restoreEnv()
-			@printf "Sorry, cannot start qwtw. Something is wrong\n" 
-			throw(ex)
-		end
+		restoreEnv()
+		@printf "Sorry, cannot start qwtw. Something is wrong\n" 
+		throw(ex)
+	end
 	#end
-	#@printf "qtstart = %d \n" test
-
-	#Base.ENV = old_env
-	restoreEnv()
+	#@printf "qtstart = %d \n" test	
 
 	#version = qversion();
 	#println(version);
 	if test == 0
 		started = true
+		if debug
+			version = qversion();
+			println(version);
+		end
+	else
+		@printf "\nERROR: library was not started (return code %d) \n" test
+		if debug
+			printEnv();
+		end
 	end
+
+	restoreEnv()
 
 	return test
 end

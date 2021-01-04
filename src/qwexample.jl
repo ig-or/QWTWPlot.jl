@@ -1,25 +1,27 @@
 #   simple QWTwPlot package example
-#   look at wiki page for more info
-#   wiki lives here: https://github.com/ig-or/QWTWPlot.jl/wiki
-#   also, useful page located here: https://github.com/ig-or/QWTWPlot.jl/wiki/qwtw-library-features
+#   for the introduction please see readme https://github.com/ig-or/QWTWPlot.jl
 #   
 
-using QWTWPlot # start 'qwtw' library
-using Random
+using QWTWPlot 
+using Random # just for data generation
+
 qstart(debug = false) # sorry, have to call this explicity here, not in __init__
 
 # draw thin blue 'sinus':
-tMax = 10. # let it be `maximum time`
-#t = Array(linspace(0.,tMax, 10000)); # our `time info`
-t = Array(range(0.,stop=tMax, length=10000)); # our `time info`
+tMax = 10.0 # let it be `maximum time`
+t = Array(range(0.0,stop=tMax, length=10000)); # our `time info`
 n = length(t);
 y = sin.(t);     # we will draw this signal
-qfigure(1); # "1" the number of the first plot window
- # parameters: 'x' and 'y' data vectors, then 'name of this line', then 'style description', then 'line width'
+qfigure(1); # "1" the number of the first plot window;
+# actually we can skip this number, if just creating new plot window (like qfigure() )
+
+ # parameters: 'x' and 'y' data vectors, 
+ # then 'name of this line', 
+ #then 'style description', then 'line width'
 qplot(t, y, "blue line", "-b", 1)
 
 # add green thick line (another sinus) on the same plot:
-y = sin.(t .* 4.) + cos.(t * 0.8);
+y = sin.(t .* 4.0) + cos.(t * 0.8);
 qplot(t, y, "thick green line", "-g", 4) #'x' and 'y' data vectors, then 'name of this line', then 'style description', then 'line width'
 qtitle("first plot window") # add a title for the first plot
 qxlabel("time (in seconds)") # put a label on X axis
@@ -30,7 +32,7 @@ qylabel("happiness") # put a label on Y axis
 	(press left mouse button, select what you need on a plot,
 	release left mouse button).
 	Right mouse button will return you back to the previous `ZOOM` state.
-	And try how mouse wheel is working in this mode also.
+	And try how mouse wheel is working also (should work for ZOOM in different modes).
 
 	Button with a "hand" - it's a "pan mode".  It will shift all the picture,
 	but it will not change scale.
@@ -41,13 +43,12 @@ qylabel("happiness") # put a label on Y axis
 	this `[]` button is useful when you draw something like a `top view plot`
 
 	Real magic is in left and right buttons; see below about it.
-    and also look at https://github.com/ig-or/QWTWPlot.jl/wiki/qwtw-library-features
-
+    and also look at readme https://github.com/ig-or/QWTWPlot.jl
 =#
 
 # create another plot, with high frequency signal and noise
 noise = rand(n);
-y = sin.(t * 100.) + noise;
+y = sin.(t * 100.0) + noise;
 qfigure(2)   # make a plot with another plot ID
 qplot(t, y, "sinus + noise", "-m", 2)
 qtitle("frequency test")
@@ -59,7 +60,6 @@ qtitle("frequency test")
 
  after this, "frequency" plot will be created,
  actually, it is called "Power Spectral Dencity plot"
- PSD creation code was implemented by Anton Klimenkov
 =#
 
 # add another line to the first plot:
@@ -78,7 +78,7 @@ qplot1(t1, y1, "points and line #1", " eb",  8)
 
 	for additional info about this line style,
 	see info here:
-	https://raw.githubusercontent.com/wiki/ig-or/qwtwplot/line-style.md
+	https://github.com/ig-or/QWTWPlot.jl/blob/master/docs/line-styles.md
 =#
 
  # parameters: 'x' and 'y' data vectors, then 'name of this line',
@@ -141,30 +141,17 @@ qfigure()
 qplot2(x, y, t, "$N test 1", " tb", 1, 5)
 qplot2(x1, y1, t, "$N test 2", " eg", 1, 3)
 qxlabel("?"); qylabel("?"); qtitle("$N points test");
-#
-#qfigure()
-#qplot(t, x, "ref test 1", "-b", 2)
-#qplot(t, y, "ref test 2", "-m", 2)
-#qxlabel("time"); qylabel("money");
-#qtitle("another big plot (2 x $N points)");
-#
-#qfigure()
-#qplot(t, x1, "ref test 1", "-b", 2)
-#qplot(t, y1, "ref test 2", "-m", 2)
-#qxlabel("time"); qylabel("value");
-#qtitle("one more big plot (2 x $N points)");
 
 
 # now lets try to draw a map;
-
 mwn = 4 # for this small example, we have only 4 points
 north = [55.688713, 55.698713, 55.678713, 55.60]; # coords in degrees
 east = [37.901073, 37.911073, 37.905073, 37.9]; # coords in degrees
 t4 = Array(range(0.,stop=tMax, length=4)); # create corresponding time info (for our cool magic markers)
 
-
 qfmap(5)
-qplot2(east, north, t4, "trajectory #1", "-rb",  3);
+qplot2(east, north, t4, "trajectory #1", "-rb",  3, 16);
+
 qtitle("top view test");
 
 #another map:
@@ -172,7 +159,7 @@ north1 = [65.688713, 65.698713, 65.678713, 65.60]; # coords in degrees
 east1 = [27.901073, 28.111073, 28.005073, 27.9]; # coords in degrees
 qfmap(6)
 qplot2(east1, north1, t4, "trajectory #2", "-rb",  3);
-qplot2(east1, north1, t4, "points", " er",  3);
+qplot2(east1, north1, t4, "points", " er",  16);
 qtitle("top view test #2");
 
 
@@ -180,7 +167,7 @@ qtitle("top view test #2");
 # close all the plots with following command:
 #qclear()
 
-# if you need bugs to be fixed, do not hesitate to fix them %)
+# if you need bugs to be fixed, or add some features, do not hesitate to fix them %)
 # and create a pull request
 # and/or create an issue on github - maybe it'll be
 # much faster for me to fix everything or make some  changes or add functionality
