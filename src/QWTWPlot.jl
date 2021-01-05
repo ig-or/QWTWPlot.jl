@@ -254,7 +254,11 @@ function qstart(;debug = false, qwtw_test = false)::Int32
 	end
 
 	# hangs tight!!!!
-	#@printf "starting qstart \n"
+	if debug
+		@printf "starting qstart in debug mode \n"
+		@printf "\tmarbleDataPath %s \n" marbleDataPath
+		@printf "\tmarblePluginPath %s \n" marblePluginPath
+	end
 	test = 1
 	try
 		if debug
@@ -388,6 +392,10 @@ function qfmap(n)
 	end
 
 	ccall(qwtwMapViewH, Cvoid, (Int32,), n);
+end;
+
+function qfmap()
+	qfmap(0)
 end;
 
 
