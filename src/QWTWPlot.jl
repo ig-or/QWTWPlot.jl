@@ -214,6 +214,14 @@ function qstart(;debug = false, qwtw_test = false)::Int32
 
 	if debug
 		@printf "loading %s \n" qwtw_libName 
+		@printf "corrected ENV:\n"
+		@static if Sys.iswindows() 
+
+		else
+			@printf "LD_LIBRARY_PATH: %s \n\n" String(ENV["LD_LIBRARY_PATH"])
+		end
+		@printf "PATH: %s \n\n" String(ENV["PATH"])
+		@printf "\n"
 	end	
 
 	try 
@@ -227,6 +235,9 @@ function qstart(;debug = false, qwtw_test = false)::Int32
 		throw(ex)
 	end
 
+	if debug 
+		@printf "\nlibrary %s opened from %s \n" qwtw_libName  Libdl.dlpath(qwtwLibHandle)
+	end
 	qwtwFigureH = Libdl.dlsym(qwtwLibHandle, "qwtfigure")
 	#qwtwFigure3DH = Libdl.dlsym(qwtwLibHandle, "qwtfigure3d")
 
@@ -458,7 +469,7 @@ function qmgline(x::Vector{Float64}, y::Vector{Float64}, z::Vector{Float64}, sty
 end
 export qmgline
 
-function qmglmesh(data::Array{Float64, 2}, xMin = -10.0, xMax = 10.0, yMin = -10.0, yMax = 10.0,  style::String = "-sb"; name = "", type = 0)
+function qmglmesh(data::Array{Float64, 2}, xMin = -10.0, xMax = 10.0, yMin = -10.0, yMax = 10.0,  style::String = ""; name = "", type = 0)
 	global qwtMglMesh, qwtwLibHandle
 	if qwtwLibHandle == 0
 		@printf "not started (was qstart() called?)\n"
@@ -468,7 +479,7 @@ function qmglmesh(data::Array{Float64, 2}, xMin = -10.0, xMax = 10.0, yMin = -10
 		@printf "3D not supported, sorry\n"
 		return
 	end
-	if length(x) < 1
+	if length(data) < 1
 		@printf "QWTWPlot::qmgline empty X value\n"
 		return
 	end

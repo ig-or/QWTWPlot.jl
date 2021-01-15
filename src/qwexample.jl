@@ -163,6 +163,30 @@ qplot2(east1, north1, t4, "points", " er",  16);
 qtitle("top view test #2");
 
 
+# ========    draw a few 3D lines ====================
+N = 100  # number of points
+R = 10.0   # radius
+t = [i / N * 2. * pi * 3.5 for i=1:N] # parameter
+x = sin.(t) .* R
+y = cos.(t) .* R
+z = t
+z1 = x + y
+
+qmgl() # create a window for 3D
+qmgline(x, y, z) # draw line #1
+qmgline(x, y, z1, "-or")  # draw line #2
+
+# ==========  draw a surface =========================
+
+f = [sin((i - 10.0) / 5.0) * sin((j - 10) / 7.0) * 10.0 for i=1:20, j = 1:20]
+f1 = [sin((i - 10.0) / 2.0) * sin((j - 10) / 3.0) * 10.0 for i=1:20, j = 1:20]
+
+qmglmesh(f, -10.0, 10., -10., 10.0, type = 1)
+qmglmesh(f1, -10.0, 10., -10., 10.0)
+
+
+
+
 # if everything is working as you need, you can
 # close all the plots with following command:
 #qclear()
