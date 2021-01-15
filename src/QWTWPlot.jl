@@ -33,6 +33,10 @@ qwywTitleH = 0
 qwtwVersionH = 0
 qwtwMWShowH = 0
 qwtEnableBroadcastH = 0
+
+qwtMglH = 0
+qwtMglLine = 0
+qwtMglMesh = 0
 qwtStartH = 0
 qwtStartDebugH = 0
 qwtStopH = 0
@@ -159,6 +163,7 @@ function qstart(;debug = false, qwtw_test = false)::Int32
 	#global qwtwPlot3DH, qwtwFigure3DH
 	global qwtStartH, qwtStopH, started
 	global old_path, old_qtPath, oldLdLibPath
+	global qwtMglH, qwtMglLine, qwtMglMesh
 
 	if started
 		@printf "qwtw already started\n"
@@ -251,6 +256,14 @@ function qstart(;debug = false, qwtw_test = false)::Int32
 		qwtDisableBroadcastH = Libdl.dlsym(qwtwLibHandle, "qwtDisableCoordBroadcast")
 	catch
 		@printf "WARNING: UDP broacast disabled \n"
+	end
+
+	try 
+		qwtMglH = Libdl.dlsym(qwtwLibHandle, "qwtmgl")
+		qwtMglLine = Libdl.dlsym(qwtwLibHandle, "qwtmgl_line")
+		qwtMglMesh = Libdl.dlsym(qwtwLibHandle, "qwtmgl_mesh")
+	catch
+		@printf "WARNING: 3D features disabled \n"
 	end
 
 	# hangs tight!!!!
@@ -397,6 +410,92 @@ end;
 function qfmap()
 	qfmap(0)
 end;
+
+function qmgl(n = 0)
+	global qwtMglH, qwtwLibHandle
+	if qwtwLibHandle == 0
+		@printf "not started (was qstart() called?)\n"
+		return
+	end
+	if qwtMglH == 0
+		@printf "3D not supported, sorry\n"
+		return
+	end
+
+	ccall(qwtMglH, Cvoid, (Int32,), n);
+	return
+end;
+
+export qmgl
+
+function qmgline(x::Vector{Float64}, y::Vector{Float64}, z::Vector{Float64}, style::String = "-sb"; name = "")
+	global qwtMglLine, qwtwLibHandle
+	if qwtwLibHandle == 0
+		@printf "not started (was qstart() called?)\n"
+		return
+	end
+	if qwtMglLine == 0
+		@printf "3D not supported, sorry\n"
+		return
+	end
+	if length(x) < 1
+		@printf "QWTWPlot::qmgline empty X value\n"
+		return
+	end
+	n = length(x)
+	@assert length(x) == length(y)
+	@assert length(z) == length(x)
+	
+	try
+	ccall(qwtMglLine, Cvoid, (Int32, Ptr{Float64}, Ptr{Float64}, Ptr{Float64}, Ptr{UInt8}, Ptr{UInt8}), 
+		n, x, y, z, name, style);
+
+		sleep(0.025)
+	catch
+		@printf "ERROR in QWTWPlot::qmgline\n"
+	end
+	return
+end
+export qmgline
+
+function qmglmesh(data::Array{Float64, 2}, xMin = -10.0, xMax = 10.0, yMin = -10.0, yMax = 10.0,  style::String = "-sb"; name = "", type = 0)
+	global qwtMglMesh, qwtwLibHandle
+	if qwtwLibHandle == 0
+		@printf "not started (was qstart() called?)\n"
+		return
+	end
+	if qwtMglMesh == 0
+		@printf "3D not supported, sorry\n"
+		return
+	end
+	if length(x) < 1
+		@printf "QWTWPlot::qmgline empty X value\n"
+		return
+	end
+	d = size(data)
+	if (d[1] < 1) || (d[2] < 1) 
+		@printf "QWTWPlot::qmglmesh empty data\n"
+		return
+	end
+	xSize = d[1]
+	ySize = d[2]
+	
+	try
+	ccall(qwtMglMesh, Cvoid, (Int32, Int32, 
+		Float64, Float64, Float64, Float64, 
+		Ptr{Float64},
+		Ptr{UInt8}, Ptr{UInt8}, Int32),
+		xSize, ySize, 
+		xMin, xMax, yMin, yMax, data,  name, style, type);
+
+		sleep(0.025)
+	catch
+		@printf "ERROR in QWTWPlot::qwtMglMesh\n"
+	end
+	return
+end
+
+export qmglmesh
 
 
 # create a new  window to draw a 3D points (QT engine)
