@@ -606,7 +606,7 @@ function qplot(x::Vector{Float64}, y::Vector{Float64}, name::String, style::Stri
 			x, y, n, name, style, ww, s);
 		sleep(0.025)
 	catch
-		@printf "qplot: error #2\n"
+		@printf "qplot: error #2  n = %d;  name = %s style = %s\n" n name style
 		traceit("error #2")
 	end
 	return
