@@ -186,7 +186,6 @@ qmglmesh(f1, -10.0, 10., -10., 10.0)
 
 
 
-
 # if everything is working as you need, you can
 # close all the plots with following command:
 #qclear()

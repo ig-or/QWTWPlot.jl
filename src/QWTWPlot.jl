@@ -37,6 +37,7 @@ qwtEnableBroadcastH = 0
 qwtMglH = 0
 qwtMglLine = 0
 qwtMglMesh = 0
+
 qwtStartH = 0
 qwtStartDebugH = 0
 qwtStopH = 0
@@ -70,6 +71,10 @@ function restoreEnv()
 	return
 end
 
+"""
+function printEnv()
+	simply print some of the env variables
+"""
 function printEnv()
 	try
 		@printf "\n\tPATH = %s \n\n" String(ENV["PATH"])
@@ -145,8 +150,8 @@ end
 start qwtw "C" library. 
 
 Without it, nothing will work. Call it before any other functions.
-if debug, will try to enable debug print out. A lot of info.
-qwtw_test	-> if true, will try to not modify env variables.
+if debug, will try to enable debug print out. A lot of info. Just for debugging.
+qwtw_test	-> if true, will try to not modify env variables. 
 """
 function qstart(;debug = false, qwtw_test = false)::Int32
 	qwtw_libName = "nolib"
@@ -190,8 +195,8 @@ function qstart(;debug = false, qwtw_test = false)::Int32
 	else
 		@static if Sys.iswindows() 
 			ENV["QT_PLUGIN_PATH"]=Qt_jll.artifact_dir * "\\plugins"	
-			addEnvItem(qwtw_jll.PATH, "PATH")
-			addEnvItem(qwtw_jll.LIBPATH, "PATH")
+			addEnvItem(qwtw_jll.PATH, "PATH", debug = debug)
+			addEnvItem(qwtw_jll.LIBPATH, "PATH", debug = debug)
 			
 			#ENV["PATH"]= boost_jll.artifact_dir * "\\bin;" *  ENV["PATH"] 
 			#ENV["PATH"]= qwt_jll.artifact_dir * "\\bin;" *  ENV["PATH"] 
@@ -201,8 +206,8 @@ function qstart(;debug = false, qwtw_test = false)::Int32
 			#new_env["PATH"]= FreeType2_jll.artifact_dir * "\\bin;" *  ENV["PATH"] 
 		else
 			ENV["QT_PLUGIN_PATH"]=string(Qt_jll.artifact_dir) * "/plugins"	
-			addEnvItem(qwtw_jll.PATH, "PATH")	
-			addEnvItem(qwtw_jll.LIBPATH, "LD_LIBRARY_PATH")	
+			addEnvItem(qwtw_jll.PATH, "PATH", debug = debug)	
+			addEnvItem(qwtw_jll.LIBPATH, "LD_LIBRARY_PATH", debug = debug)	
 
 			#ENV["PATH"]= boost_jll.artifact_dir * "/bin;" *  ENV["PATH"] 
 			
@@ -390,8 +395,13 @@ after this function, this plot is the "active plot".
 If `n == 0` then another new plot will be created.
 """
 function qfigure(n)
-	global qwtwFigureH
+	global qwtwFigureH, started
+	if !started
+		@printf "not started (was qstart() called?)\n"
+		return
+	end
 	ccall(qwtwFigureH, Cvoid, (Int32,), n);
+	return
 end;
 
 function qfigure()
@@ -400,13 +410,12 @@ end;
 
 """
 	qfmap(n)
-Not working now. Maybe later.
 create a new  plot window to draw on a map (with specific window ID)
 'n' is Int32
 """
 function qfmap(n)
-	global qwtwMapViewH, qwtwLibHandle
-	if qwtwLibHandle == 0
+	global qwtwMapViewH, qwtwLibHandle, started
+	if (qwtwLibHandle == 0) || (!started)
 		@printf "not started (was qstart() called?)\n"
 		return
 	end
@@ -418,13 +427,22 @@ function qfmap(n)
 	ccall(qwtwMapViewH, Cvoid, (Int32,), n);
 end;
 
+"""
+function qfmap()
+create a new  plot window to draw on a map
+"""
 function qfmap()
 	qfmap(0)
 end;
 
+"""
+qmgl(n = 0)
+create a new  plot window to draw 3D lines / surfaces
+currently works only for Linux
+"""
 function qmgl(n = 0)
-	global qwtMglH, qwtwLibHandle
-	if qwtwLibHandle == 0
+	global qwtMglH, qwtwLibHandle, started
+	if (qwtwLibHandle == 0) || (!started)
 		@printf "not started (was qstart() called?)\n"
 		return
 	end
@@ -439,9 +457,16 @@ end;
 
 export qmgl
 
+"""
+qmgline(x::Vector{Float64}, y::Vector{Float64}, z::Vector{Float64}, style::String = "-sb"; name = "")
+draw a 3D line. 
+x, y, and z are the vectors with point coordinates.
+style - how to draw a line. Explanation is here: http://mathgl.sourceforge.net/doc_en/Line-styles.html
+name - not used yet (maybe will add later)
+"""
 function qmgline(x::Vector{Float64}, y::Vector{Float64}, z::Vector{Float64}, style::String = "-sb"; name = "")
-	global qwtMglLine, qwtwLibHandle
-	if qwtwLibHandle == 0
+	global qwtMglLine, qwtwLibHandle, started
+	if (qwtwLibHandle == 0) || (!started)
 		@printf "not started (was qstart() called?)\n"
 		return
 	end
@@ -469,9 +494,19 @@ function qmgline(x::Vector{Float64}, y::Vector{Float64}, z::Vector{Float64}, sty
 end
 export qmgline
 
+"""
+qmglmesh(data::Array{Float64, 2}, xMin = -10.0, xMax = 10.0, yMin = -10.0, yMax = 10.0,  style::String = ""; name = "", type = 0)
+	draw a 3D mesh/surface.   Currently works only for Linux. 
+data - vertical (z) coordinates of the surface. should be Array{Float64, 2}
+xMin, xMax, yMin, yMax is the definition of the range where to draw a surface. All the 
+coordinates from 'data' are evenly distributed inside this range.
+style how to draw the surface. Some hints could be taken from here: http://mathgl.sourceforge.net/doc_en/Color-scheme.html
+type  -   0 or 1;  mesh/grid  or surface
+name - not used yet (maybe will add later)
+"""
 function qmglmesh(data::Array{Float64, 2}, xMin = -10.0, xMax = 10.0, yMin = -10.0, yMax = 10.0,  style::String = ""; name = "", type = 0)
-	global qwtMglMesh, qwtwLibHandle
-	if qwtwLibHandle == 0
+	global qwtMglMesh, qwtwLibHandle, started
+	if (qwtwLibHandle == 0) || (!started)
 		@printf "not started (was qstart() called?)\n"
 		return
 	end
@@ -524,13 +559,14 @@ looks like `0` means 'not important', `1` means "important.
 	'not important' lines may be not completely inside the window.
 """
 function qimportant(i)
-	global qwtwsetimpstatusH, qwtwLibHandle
-	if qwtwLibHandle == 0
+	global qwtwsetimpstatusH, qwtwLibHandle, started
+	if (qwtwLibHandle == 0) || (!started)
 		@printf "not started (was qstart() called?)\n"
 		return
 	end
 
 	ccall(qwtwsetimpstatusH, Cvoid, (Int32,), i);
+	return
 end
 
 """
@@ -538,13 +574,14 @@ end
 close all the plots
 """
 function qclear()
-	global qwtwCLearH, qwtwLibHandle
-	if qwtwLibHandle == 0
+	global qwtwCLearH, qwtwLibHandle, started
+	if (qwtwLibHandle == 0) || (!started)
 		@printf "not started (was qstart() called?)\n"
 		return
 	end
 	
 	ccall(qwtwCLearH, Cvoid, ());
+	return
 end
 
 """
@@ -552,13 +589,14 @@ end
 open/show "main control window".
 """
 function qsmw()
-	global qwtwMWShowH, qwtwLibHandle
-	if qwtwLibHandle == 0
+	global qwtwMWShowH, qwtwLibHandle, started
+	if (qwtwLibHandle == 0) || (!started)
 		@printf "not started (was qstart() called?)\n"
 		return
 	end
 
 	ccall(qwtwMWShowH, Cvoid, ());
+	return
 end
 
 """
@@ -586,8 +624,8 @@ Look at two places for the detail explanation:
 """
 function qplot(x::Vector{Float64}, y::Vector{Float64}, name::String, style::String="-b",
 		lineWidth=1, symSize=1)
-	global qwtwPlotH, qwtwLibHandle
-	if qwtwLibHandle == 0
+	global qwtwPlotH, qwtwLibHandle, started
+	if (qwtwLibHandle == 0) || (!started)
 		@printf "not started (was qstart() called?)\n"
 		return
 	end
@@ -629,8 +667,8 @@ Look at two places for the detail explanation:
 * https://github.com/ig-or/QWTWPlot.jl/blob/master/docs/line-styles.md
 """
 function qplot1(x::Vector{Float64}, y::Vector{Float64}, name::String, style::String, symSize)
-	global qwtwPlotH, qwtwLibHandle
-	if qwtwLibHandle == 0
+	global qwtwPlotH, qwtwLibHandle, started
+	if (qwtwLibHandle == 0) || (!started)
 		@printf "not started (was qstart() called?)\n"
 		return
 	end
@@ -652,8 +690,7 @@ function qplot1(x::Vector{Float64}, y::Vector{Float64}, name::String, style::Str
 		throw(ex)
 	end
 	sleep(0.025)
-
-
+	return
 end;
 
 # draw symbols in 3D space
@@ -699,8 +736,8 @@ line 'allow 49561 and 49562 ports for the local host'.
 """
 function qEnableCoordBroadcast(x::Vector{Float64}, y::Vector{Float64}, z::Vector{Float64},
 	 		time::Vector{Float64})
-	global qwtEnableBroadcastH, qwtwLibHandle
-	if qwtwLibHandle == 0
+	global qwtEnableBroadcastH, qwtwLibHandle, started
+	if (qwtwLibHandle == 0) || (!started)
 		@printf "not started (was qstart() called?)\n"
 		return
 	end
@@ -725,8 +762,8 @@ disable all this UDP -related stuff.
 This function will stop UDP server and client.
 """
 function qDisableCoordBroadcast()
-	global qwtDisableBroadcastH, qwtwLibHandle
-	if qwtwLibHandle == 0
+	global qwtDisableBroadcastH, qwtwLibHandle, started
+	if (qwtwLibHandle == 0) || (!started)
 		@printf "not started (was qstart() called?)\n"
 		return
 	end
@@ -734,7 +771,7 @@ function qDisableCoordBroadcast()
 
 	ccall(qwtDisableBroadcastH, Cvoid, ());
 	sleep(0.025);
-
+	return
 end;
 
 
@@ -766,8 +803,8 @@ qplot2(x, y, time, "function 2", "-m", 3)
 Now use marker on both plots and see that it moves on both plots.
 """
 function qplot2(x::Array{Float64}, y::Array{Float64}, time::Array{Float64}, name::String, style::String, lineWidth=1, symSize=1)
-	global qwtwPlot2H, qwtwLibHandle
-	if qwtwLibHandle == 0
+	global qwtwPlot2H, qwtwLibHandle, started
+	if (qwtwLibHandle == 0) || (!started)
 		@printf "not started (was qstart() called?)\n"
 		return
 	end
@@ -787,13 +824,14 @@ end;
 put a label on the horizontal axis.
 """
 function qxlabel(s::String)
-	global qwtwXlabelH, qwtwLibHandle
-	if qwtwLibHandle == 0
+	global qwtwXlabelH, qwtwLibHandle, started
+	if (qwtwLibHandle == 0) || (!started)
 		@printf "not started (was qstart() called?)\n"
 		return
 	end
 
 	ccall(qwtwXlabelH, Cvoid, (Ptr{UInt8},), s);
+	return
 end;
 
 """
@@ -801,13 +839,14 @@ end;
 put a label on the left vertical axis
 """
 function qylabel(s::String)
-	global qwtwYlabelH, qwtwLibHandle
-	if qwtwLibHandle == 0
+	global qwtwYlabelH, qwtwLibHandle, started
+	if (qwtwLibHandle == 0) || (!started)
 		@printf "not started (was qstart() called?)\n"
 		return
 	end
 
 	ccall(qwtwYlabelH, Cvoid, (Ptr{UInt8},), s);
+	return
 end;
 
 """
@@ -815,13 +854,14 @@ end;
 put a title on current plot.
 """
 function qtitle(s::String)
-	global qwywTitleH, qwtwLibHandle
-	if qwtwLibHandle == 0
+	global qwywTitleH, qwtwLibHandle, started
+	if (qwtwLibHandle == 0) || (!started)
 		@printf "not started (was qstart() called?)\n"
 		return
 	end
 
 	ccall(qwywTitleH, Cvoid, (Ptr{UInt8},), s);
+	return
 end
 
 """
