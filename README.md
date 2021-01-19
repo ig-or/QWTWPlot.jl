@@ -60,3 +60,8 @@ After this (in new small window) select lines for which you'd like to create a P
  ![](docs/img/map-example.png "marker examples")
  
 
+ * Now its possible to create 3D lines and surfaces.  There are a few details about how to do this in the example.    https://github.com/ig-or/QWTWPlot.jl/blob/master/src/qwexample.jl
+ 
+ Markers not supported here (yet?).
+ ![](docs/img/3d.png "3d examples")
+ 
