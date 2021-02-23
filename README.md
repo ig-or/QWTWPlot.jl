@@ -1,13 +1,10 @@
 # QWTWPlot
-(Windows version is not working right now, sorry. Will try to fix it).
-
 This is another 2D plotting tool for Julia language.  It is based on `qwtw` `C` library, which is based on `QWT` library which is based on `QT` library.
 
 quickly draw a lot of points:
  ![](docs/img/logo.png "big plot")
 
-Current version supposed to work for `Windows` _and_ for `Linux` x64 bits, but looks like currently Windows build is not working (due to issues with MathGL_jll). Will try to fix it eventually;  right now it you'd try to `import QWTWPlot` on Windows, it will just hang forever. Linux build looks like working, though.
-
+Current version supposed to work for `Windows` _and_ for `Linux` x64 bits.
 It is very useful for data analysis (like if you have a dynamic systems with a big state vector, sometimes its difficult to say how one variable influence other variable).
 
 ## how to install it
