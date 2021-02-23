@@ -9,7 +9,7 @@ It is very useful for data analysis (like if you have a dynamic systems with a b
 
 ## how to install it
 
-* just install it as usual Julia package, with `] add QWTWPlot.jl` .  
+* just install it as usual Julia package, with `] add QWTWPlot` .  
 
 BTW, this is possible because of https://github.com/JuliaPackaging/BinaryBuilder.jl
 
@@ -59,7 +59,7 @@ After this (in new small window) select lines for which you'd like to create a P
  ![](docs/img/map-example.png "marker examples")
  
 
- * Now its possible to create 3D lines and surfaces.  There are a few details about how to do this in the example.    https://github.com/ig-or/QWTWPlot.jl/blob/master/src/qwexample.jl
+ * Now its possible to create 3D lines and surfaces (because of MathGL).  There are a few details about how to do this in the example.    https://github.com/ig-or/QWTWPlot.jl/blob/master/src/qwexample.jl
  
  Markers not supported here (yet?).
  ![](docs/img/3d.png "3d examples")
