@@ -5,7 +5,7 @@
 using QWTWPlot 
 using Random # just for data generation
 
-qstart(debug = false) # sorry, have to call this explicity here, not in __init__
+qstart() # sorry, have to call this explicity here, not in __init__
 
 # draw thin blue 'sinus':
 tMax = 10.0 # let it be `maximum time`
@@ -173,8 +173,10 @@ z = t
 z1 = x + y
 
 qmgl() # create a window for 3D
-qmgline(x, y, z) # draw line #1
-qmgline(x, y, z1, "-or")  # draw line #2
+qmgline(x, y, z, "", name = "first 3D line") # draw line #1 with some default style
+qmgline(x, y, z1, "-or", name = "second 3D line")  # draw line #2
+
+
 
 # ==========  draw a surface =========================
 

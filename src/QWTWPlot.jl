@@ -462,7 +462,7 @@ qmgline(x::Vector{Float64}, y::Vector{Float64}, z::Vector{Float64}, style::Strin
 draw a 3D line. 
 x, y, and z are the vectors with point coordinates.
 style - how to draw a line. Explanation is here: http://mathgl.sourceforge.net/doc_en/Line-styles.html
-name - not used yet (maybe will add later)
+name - a legend for this line
 """
 function qmgline(x::Vector{Float64}, y::Vector{Float64}, z::Vector{Float64}, style::String = "-sb"; name = "")
 	global qwtMglLine, qwtwLibHandle, started
