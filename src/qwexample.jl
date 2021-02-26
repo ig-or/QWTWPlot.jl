@@ -5,7 +5,8 @@
 using QWTWPlot 
 using Random # just for data generation
 
-qstart() # sorry, have to call this explicity here, not in __init__
+#qstart() # sorry, have to call this explicity here, not in __init__
+qstart(debug=true, qwtw_test = true, libraryName = "qwtw")
 
 # draw thin blue 'sinus':
 tMax = 10.0 # let it be `maximum time`
@@ -108,6 +109,13 @@ t1 = Array(range(0.,  stop=2. * pi, length=8));
 x1 = 0.5*sin.(t1);
 y1 = 0.5*cos.(t1);
 qplot2(x1, y1, t1, "circle #2", " ec", 1, 20)
+
+# also, you can remove lines from plots, using values returned from qplot, qplot1 and qplot2 functions. 
+#  this not working for maps/3D lines (does anybody needs it?)
+# lets draw one more circle on the same plot:
+id3 = qplot2(x1 .+ 1.0, y1 .+ 0.5, t1, "circle #3", " er", 1, 15)
+sleep(2.5)
+qremove(id3) # this supposed to remove the last circle
 
 ## small 3D example: - disabled (not supported now because of the license limitations) 
 ##qf3d(124)

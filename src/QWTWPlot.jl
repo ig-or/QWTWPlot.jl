@@ -20,6 +20,7 @@ end
 # DLLs and function handles below:
 qwtwLibHandle = 0
 qwtwFigureH = 0
+qwtwRemoveLineH = 0
 #qwtwFigure3DH = 0 # not supported because of license restrictions..    maybe later... 
 qwtwMapViewH = 0
 qwtwsetimpstatusH = 0
@@ -153,7 +154,7 @@ Without it, nothing will work. Call it before any other functions.
 if debug, will try to enable debug print out. A lot of info. Just for debugging.
 qwtw_test	-> if true, will try to not modify env variables. 
 """
-function qstart(;debug = false, qwtw_test = false)::Int32
+function qstart(;debug = false, qwtw_test = false, libraryName = "libqwtw")::Int32
 	qwtw_libName = "nolib"
 	if debug
 	@printf "startint qwtw; current path: %s\n\n" ENV["PATH"]
@@ -163,7 +164,7 @@ function qstart(;debug = false, qwtw_test = false)::Int32
 	#if debug qwtw_libName *= "d"; end
 
 	global qwtwLibHandle, qwtwFigureH, qwtwMapViewH,  qwtwsetimpstatusH, qwtwCLearH, qwtwPlotH
-	global qwtwPlot2H, qwtwXlabelH, qwtwYlabelH, qwywTitleH, qwtwVersionH, qwtwMWShowH
+	global qwtwPlot2H, qwtwXlabelH, qwtwYlabelH, qwywTitleH, qwtwVersionH, qwtwMWShowH, qwtwRemoveLineH
 	global qwtEnableBroadcastH, qwtDisableBroadcastH
 	#global qwtwPlot3DH, qwtwFigure3DH
 	global qwtStartH, qwtStopH, started
@@ -176,12 +177,12 @@ function qstart(;debug = false, qwtw_test = false)::Int32
 	end
 
 	@static if Sys.iswindows() #  this part will handle OS differences
-		qwtw_libName = "libqwtw.dll"
+		qwtw_libName = libraryName * ".dll"
 	else # hopefully this may be Linux
 		if debug
 			@printf "\t non-Windows detected\n"
 		end
-		qwtw_libName = "libqwtw.so"
+		qwtw_libName = libraryName * ".so"
 	end
 	
 	saveEnv()
@@ -218,7 +219,7 @@ function qstart(;debug = false, qwtw_test = false)::Int32
 	end
 
 	if debug
-		@printf "loading %s \n" qwtw_libName 
+		@printf "\nloading %s \n" qwtw_libName 
 		@printf "corrected ENV:\n"
 		@static if Sys.iswindows() 
 
@@ -266,6 +267,7 @@ function qstart(;debug = false, qwtw_test = false)::Int32
 	qwtStartH = Libdl.dlsym(qwtwLibHandle, "qtstart")
 	qwtStartDebugH = Libdl.dlsym(qwtwLibHandle, "qtstart_debug")
 	qwtStopH = Libdl.dlsym(qwtwLibHandle, "qwtclose")
+	qwtwRemoveLineH = Libdl.dlsym(qwtwLibHandle, "qwtremove")
 
 	try
 		qwtEnableBroadcastH = Libdl.dlsym(qwtwLibHandle, "qwtEnableCoordBroadcast")
@@ -407,6 +409,17 @@ end;
 function qfigure()
 	qfigure(0);
 end;
+
+function qremove(id::Int32)
+	global qwtwRemoveLineH, started
+	if !started
+		@printf "not started (was qstart() called?)\n"
+		return
+	end
+	ccall(qwtwRemoveLineH, Cvoid, (Int32,), id);
+	return
+end
+export qremove
 
 """
 	qfmap(n)
@@ -600,7 +613,7 @@ function qsmw()
 end
 
 """
-qplot(x::Vector{Float64}, y::Vector{Float64}, name::String, style::String, lineWidth, symSize)
+qplot(x::Vector{Float64}, y::Vector{Float64}, name::String, style::String, lineWidth, symSize):: Int32
 
 plot normal lines.
 
@@ -621,37 +634,42 @@ what does 'style' parameter means? It's a string which has 1 or 2 or 3 symbols.
 Look at two places for the detail explanation:
 * example code  https://github.com/ig-or/QWTWPlot.jl/blob/master/src/qwexample.jl   
 * https://github.com/ig-or/QWTWPlot.jl/blob/master/docs/line-styles.md
+
+this function returns ID of the line created. hopefully you can use it in some other functions
+ID supposed to be >=0 is all is OK, or <0 in case of error
 """
-function qplot(x::Vector{Float64}, y::Vector{Float64}, name::String, style::String="-b",
-		lineWidth=1, symSize=1)
+function qplot(x::Vector{Float64}, y::Vector{Float64}, name::String, style::String="-b", lineWidth=1, symSize=1) :: Int32
 	global qwtwPlotH, qwtwLibHandle, started
 	if (qwtwLibHandle == 0) || (!started)
 		@printf "not started (was qstart() called?)\n"
-		return
+		return -88
 	end
 
 	if length(x) != length(y)
 		@printf "qplot: x[%d], y[%d]\n" length(x) length(y)
 		traceit("error")
+		return -89
 	end
 	@assert (length(x) == length(y))
 
 	n = length(x)
 	ww::Int32 = lineWidth;
 	s::Int32 = symSize
+	test::Int32 = -50
 	try
-		ccall(qwtwPlotH, Cvoid, (Ptr{Float64}, Ptr{Float64}, Int32, Ptr{UInt8}, Ptr{UInt8}, Int32, Int32),
+		test = ccall(qwtwPlotH, Int32, (Ptr{Float64}, Ptr{Float64}, Int32, Ptr{UInt8}, Ptr{UInt8}, Int32, Int32),
 			x, y, n, name, style, ww, s);
 		sleep(0.025)
 	catch
 		@printf "qplot: error #2  n = %d;  name = %s style = %s\n" n name style
 		traceit("error #2")
+		return -42
 	end
-	return
+	return test
 end	
 
 """
-qplot1(x::Vector{Float64}, y::Vector{Float64}, name::String, style::String, symSize)
+qplot1(x::Vector{Float64}, y::Vector{Float64}, name::String, style::String, symSize):: Int32
 
 plot lines with line width == 1.
 
@@ -665,12 +683,17 @@ Look at two places for the detail explanation:
 
 * example code  https://github.com/ig-or/QWTWPlot.jl/blob/master/src/qwexample.jl
 * https://github.com/ig-or/QWTWPlot.jl/blob/master/docs/line-styles.md
+
+
+this function returns ID of the line created. hopefully you can use it in some other functions
+	ID supposed to be >=0 is all is OK, or <0 in case of error
+	
 """
-function qplot1(x::Vector{Float64}, y::Vector{Float64}, name::String, style::String, symSize)
+function qplot1(x::Vector{Float64}, y::Vector{Float64}, name::String, style::String, symSize) :: Int32
 	global qwtwPlotH, qwtwLibHandle, started
 	if (qwtwLibHandle == 0) || (!started)
 		@printf "not started (was qstart() called?)\n"
-		return
+		return -88
 	end
 
 	n = length(x)
@@ -680,17 +703,20 @@ function qplot1(x::Vector{Float64}, y::Vector{Float64}, name::String, style::Str
 	@assert (n == n1)
 	if (n == 0) || (n1 ==0) || (n != n1)
 		error("qplot1: wrong array length")
+		return -89
 	end
 	ww::Int32 = symSize;
+	test::Int32 = -50
 	try
-		ccall(qwtwPlotH, Cvoid, (Ptr{Float64}, Ptr{Float64}, Int32, Ptr{UInt8}, Ptr{UInt8}, Int32, Int32),
+		test = ccall(qwtwPlotH, Int32, (Ptr{Float64}, Ptr{Float64}, Int32, Ptr{UInt8}, Ptr{UInt8}, Int32, Int32),
 			x, y, n, name, style, 1, ww);
 	catch ex
 		@printf "qplot1 ERROR\n"
 		throw(ex)
+		return -42
 	end
 	sleep(0.025)
-	return
+	return test
 end;
 
 # draw symbols in 3D space
@@ -776,7 +802,7 @@ end;
 
 
 """
-qplot2(x::Array{Float64}, y::Array{Float64}, time::Array{Float64}, name::String, style::String, lineWidth=1, symSize=1)
+qplot2(x::Array{Float64}, y::Array{Float64}, time::Array{Float64}, name::String, style::String, lineWidth=1, symSize=1):: Int32
 
 plot with additional parameter (time?) info.
 
@@ -801,23 +827,36 @@ qfigure()
 qplot2(x, y, time, "function 2", "-m", 3)
 ```
 Now use marker on both plots and see that it moves on both plots.
+
+
+this function returns ID of the line created. hopefully you can use it in some other functions
+	ID supposed to be >=0 is all is OK, or <0 in case of error
+
 """
-function qplot2(x::Array{Float64}, y::Array{Float64}, time::Array{Float64}, name::String, style::String, lineWidth=1, symSize=1)
+function qplot2(x::Array{Float64}, y::Array{Float64}, time::Array{Float64}, name::String, style::String, lineWidth=1, symSize=1):: Int32
 	global qwtwPlot2H, qwtwLibHandle, started
 	if (qwtwLibHandle == 0) || (!started)
 		@printf "not started (was qstart() called?)\n"
-		return
+		return -88
 	end
 
 	@assert (length(x) == length(y))
 	n = length(x)
 	ww::Int32 = lineWidth;
 	s::Int32 = symSize;
-	ccall(qwtwPlot2H, Cvoid, (Ptr{Float64}, Ptr{Float64}, Int32, Ptr{UInt8}, Ptr{UInt8}, Int32, Int32, Ptr{Float64}),
-		x, y, n, name, style, ww, s, time);
+	test::Int32 = -50
+	try 
+		test = ccall(qwtwPlot2H, Int32, (Ptr{Float64}, Ptr{Float64}, Int32, Ptr{UInt8}, Ptr{UInt8}, Int32, Int32, Ptr{Float64}),
+			x, y, n, name, style, ww, s, time);
+	catch ex
+		@printf "qplot1 ERROR\n"
+		throw(ex)
+		return -42
+	end
+
 	sleep(0.025)
-	return
-end;
+	return test
+end
 
 """
 	qxlabel(s::String)
