@@ -114,9 +114,9 @@ qplot2(x1, y1, t1, "circle #2", " ec", 1, 20)
 #  this not working for maps/3D lines (does anybody needs it?)
 # lets draw one more circle on the same plot:
 id3 = qplot2(x1 .+ 1.0, y1 .+ 0.5, t1, "circle #3", " er", 1, 15)
-sleep(2.5)
-qremove(id3) # this supposed to remove the last circle
 sleep(1.5)
+qremove(id3) # this supposed to remove the last circle
+sleep(1.1)
 
 # and it's possible to change existing lines
 x8 = collect(0.0:0.1:10)
@@ -126,7 +126,7 @@ id123 = qplot(x8, y8, "changing line", "-b", 2)
 qtitle("changing line demo")
 for i=1:50
 	global y8
-	sleep(0.1)
+	sleep(0.05)
 	y8 = sin.(x8 .* (i / 8.))
 	qchange(id123, x8, y8)
 end

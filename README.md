@@ -63,4 +63,8 @@ After this (in new small window) select lines for which you'd like to create a P
  
  Markers not supported here (yet?).
  ![](docs/img/3d.png "3d examples")
+
+ also,  it's possible to remove or change existing lineson plots (implemented for simple 2D plots).
+
+ I suspect the underlying qwtw library is not thread-safe, so would not recommend to use it from different julia threads simultaneously. 
  
