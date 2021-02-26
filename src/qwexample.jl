@@ -5,8 +5,8 @@
 using QWTWPlot 
 using Random # just for data generation
 
-#qstart() # sorry, have to call this explicity here, not in __init__
-qstart(debug=true, qwtw_test = true, libraryName = "qwtw")
+qstart() # sorry, have to call this explicity here, not in __init__
+#qstart(debug=true, qwtw_test = true, libraryName = "qwtw")
 
 # draw thin blue 'sinus':
 tMax = 10.0 # let it be `maximum time`
@@ -116,6 +116,22 @@ qplot2(x1, y1, t1, "circle #2", " ec", 1, 20)
 id3 = qplot2(x1 .+ 1.0, y1 .+ 0.5, t1, "circle #3", " er", 1, 15)
 sleep(2.5)
 qremove(id3) # this supposed to remove the last circle
+sleep(1.5)
+
+# and it's possible to change existing lines
+x8 = collect(0.0:0.1:10)
+y8 =  sin.(x8)
+qfigure()
+id123 = qplot(x8, y8, "changing line", "-b", 2)
+qtitle("changing line demo")
+for i=1:50
+	global y8
+	sleep(0.1)
+	y8 = sin.(x8 .* (i / 8.))
+	qchange(id123, x8, y8)
+end
+
+
 
 ## small 3D example: - disabled (not supported now because of the license limitations) 
 ##qf3d(124)

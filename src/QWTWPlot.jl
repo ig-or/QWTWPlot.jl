@@ -21,6 +21,7 @@ end
 qwtwLibHandle = 0
 qwtwFigureH = 0
 qwtwRemoveLineH = 0
+qwtwChangeLineH = 0
 #qwtwFigure3DH = 0 # not supported because of license restrictions..    maybe later... 
 qwtwMapViewH = 0
 qwtwsetimpstatusH = 0
@@ -165,7 +166,7 @@ function qstart(;debug = false, qwtw_test = false, libraryName = "libqwtw")::Int
 
 	global qwtwLibHandle, qwtwFigureH, qwtwMapViewH,  qwtwsetimpstatusH, qwtwCLearH, qwtwPlotH
 	global qwtwPlot2H, qwtwXlabelH, qwtwYlabelH, qwywTitleH, qwtwVersionH, qwtwMWShowH, qwtwRemoveLineH
-	global qwtEnableBroadcastH, qwtDisableBroadcastH
+	global qwtEnableBroadcastH, qwtDisableBroadcastH, qwtwChangeLineH
 	#global qwtwPlot3DH, qwtwFigure3DH
 	global qwtStartH, qwtStopH, started
 	global old_path, old_qtPath, oldLdLibPath
@@ -268,6 +269,7 @@ function qstart(;debug = false, qwtw_test = false, libraryName = "libqwtw")::Int
 	qwtStartDebugH = Libdl.dlsym(qwtwLibHandle, "qtstart_debug")
 	qwtStopH = Libdl.dlsym(qwtwLibHandle, "qwtclose")
 	qwtwRemoveLineH = Libdl.dlsym(qwtwLibHandle, "qwtremove")
+	qwtwChangeLineH = Libdl.dlsym(qwtwLibHandle, "qwtchange")
 
 	try
 		qwtEnableBroadcastH = Libdl.dlsym(qwtwLibHandle, "qwtEnableCoordBroadcast")
@@ -717,7 +719,47 @@ function qplot1(x::Vector{Float64}, y::Vector{Float64}, name::String, style::Str
 	end
 	sleep(0.025)
 	return test
-end;
+end
+
+"""
+qchange(id::Int32, x::Vector{Float64}, y::Vector{Float64}, t::Vector{Float64} = []) :: Int32
+change existing line.
+"""
+function qchange(id::Int32, x::Vector{Float64}, y::Vector{Float64}, t::Vector{Float64} = Vector{Float64}([])) :: Int32
+	global qwtwChangeLineH, started
+	if !started
+		@printf "not started (was qstart() called?)\n"
+		return
+	end
+	n = length(x)
+	n1 = length(y)
+	n2 = length(t)
+	if (n == 0) || (n1 ==0) || (n != n1)
+		error("qchange: wrong array length")
+		return -89
+	end
+
+	zz = Ptr{Float64}(C_NULL)
+	tt = Ptr{Float64}(C_NULL)
+	if n2 > 0
+		tt = t
+		if n2 != n
+			error("qchange: wrong _t_ array length")
+			return 84
+		end
+	end
+	test = -50
+	try
+		test = ccall(qwtwChangeLineH, Int32, (Int32, Ptr{Float64}, Ptr{Float64}, Ptr{Float64}, Ptr{Float64}, Int32), 
+			id, x, y, zz, tt, n);
+	catch ex
+		@printf "qchange ERROR\n"
+		throw(ex)
+		return -42
+	end
+	return test
+end
+export qchange
 
 # draw symbols in 3D space
 # currently style and 'w' are not used
