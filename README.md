@@ -64,7 +64,21 @@ After this (in new small window) select lines for which you'd like to create a P
  Markers not supported here (yet?).
  ![](docs/img/3d.png "3d examples")
 
- also,  it's possible to remove or change existing lineson plots (implemented for simple 2D plots).
+ also,  it's possible to remove or change existing lines on plots (see an example how to do it)(implemented for simple 2D plots).
+
+ ### keyboard shortcuts
+ * _M_ switch to "marker mode"
+ * _P_ switch to "pan mode"
+ * _Z_ switch to "zoom mode"
+ * _V_ add/remove "(permanent)vertical marker" to the current marker position
+ * _Shift+V_  same as _V_ but for all the existing plots which can support it (simple 2D plots)
+ * _A_  add/remove an "(permanent) arrow-like marker" to the current marker position.
+
+ For permanent vertical markers, you can change its label, and for "arrow" marker you can change its label and color.
+ How those (permanent) markers looks like:
+ ![](docs/img/pm.png "3permanent markers example")
+
+
 
  I suspect the underlying qwtw library is not thread-safe, so would not recommend to use it from different julia threads simultaneously. 
  
