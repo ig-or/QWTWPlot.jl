@@ -1,5 +1,5 @@
 # QWTWPlot
-This is another 2D plotting tool for Julia language.  It is based on `qwtw` `C` library, which is based on `QWT` library which is based on `QT` library.
+This is another 2D plotting tool for Julia language.  It is based on `qwtw` `C` library, which is based on `QWT` library which is based on `QT` library. Also, `MathGL` and `KDE Marble` libraries are used.
 
 quickly draw a lot of points:
  ![](docs/img/logo.png "big plot")
