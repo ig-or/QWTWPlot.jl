@@ -21,6 +21,7 @@ end
 qwtwLibHandle = 0
 qwtwFigureH = 0
 qwtwRemoveLineH = 0
+qwtwDebugMode = false
 qwtwChangeLineH = 0
 #qwtwFigure3DH = 0 # not supported because of license restrictions..    maybe later... 
 qwtwMapViewH = 0
@@ -156,9 +157,11 @@ if debug, will try to enable debug print out. A lot of info. Just for debugging.
 qwtw_test	-> if true, will try to not modify env variables. 
 """
 function qstart(;debug = false, qwtw_test = false, libraryName = "libqwtw")::Int32
+	global qwtwDebugMode
+	qwtwDebugMode = debug
 	qwtw_libName = "nolib"
 	if debug
-	@printf "startint qwtw; current path: %s\n\n" ENV["PATH"]
+		@printf "startint qwtw; current path: %s\n\n" ENV["PATH"]
 	end
 
 	# this could be still useful:
@@ -641,7 +644,7 @@ this function returns ID of the line created. hopefully you can use it in some o
 ID supposed to be >=0 is all is OK, or <0 in case of error
 """
 function qplot(x::Vector{Float64}, y::Vector{Float64}, name::String, style::String="-b", lineWidth=1, symSize=1) :: Int32
-	global qwtwPlotH, qwtwLibHandle, started
+	global qwtwPlotH, qwtwLibHandle, started, qwtwDebugMode
 	if (qwtwLibHandle == 0) || (!started)
 		@printf "not started (was qstart() called?)\n"
 		return -88
@@ -652,12 +655,20 @@ function qplot(x::Vector{Float64}, y::Vector{Float64}, name::String, style::Stri
 		traceit("error")
 		return -89
 	end
-	@assert (length(x) == length(y))
+	#@assert (length(x) == length(y))
 
 	n = length(x)
+	if n < 1
+		@printf "QWTWPlot qplot: bad input array length (%d) \n" n
+		return 578
+	end
 	ww::Int32 = lineWidth;
 	s::Int32 = symSize
 	test::Int32 = -50
+
+	if qwtwDebugMode
+		@printf "qplot: (%s) (%s) n=%d \n " name style n
+	end
 	try
 		test = ccall(qwtwPlotH, Int32, (Ptr{Float64}, Ptr{Float64}, Int32, Ptr{UInt8}, Ptr{UInt8}, Int32, Int32),
 			x, y, n, name, style, ww, s);
@@ -692,7 +703,7 @@ this function returns ID of the line created. hopefully you can use it in some o
 	
 """
 function qplot1(x::Vector{Float64}, y::Vector{Float64}, name::String, style::String, symSize) :: Int32
-	global qwtwPlotH, qwtwLibHandle, started
+	global qwtwPlotH, qwtwLibHandle, started, qwtwDebugMode
 	if (qwtwLibHandle == 0) || (!started)
 		@printf "not started (was qstart() called?)\n"
 		return -88
@@ -700,15 +711,20 @@ function qplot1(x::Vector{Float64}, y::Vector{Float64}, name::String, style::Str
 
 	n = length(x)
 	n1 = length(y)
-	@assert n > 0
-	@assert n1 > 0
-	@assert (n == n1)
-	if (n == 0) || (n1 ==0) || (n != n1)
+	#@assert n > 0
+	#@assert n1 > 0
+	#@assert (n == n1)
+	if (n < 1) || (n1 < 1) || (n != n1)
+		@printf "QWTWPlot qplot: bad input array length (%d) \n" n
 		error("qplot1: wrong array length")
 		return -89
 	end
 	ww::Int32 = symSize;
 	test::Int32 = -50
+	if qwtwDebugMode
+		@printf "qplot1: (%s) (%s) n=%d \n " name style n
+	end
+
 	try
 		test = ccall(qwtwPlotH, Int32, (Ptr{Float64}, Ptr{Float64}, Int32, Ptr{UInt8}, Ptr{UInt8}, Int32, Int32),
 			x, y, n, name, style, 1, ww);
@@ -734,7 +750,8 @@ function qchange(id::Int32, x::Vector{Float64}, y::Vector{Float64}, t::Vector{Fl
 	n = length(x)
 	n1 = length(y)
 	n2 = length(t)
-	if (n == 0) || (n1 ==0) || (n != n1)
+	if (n < 1) || (n1 < 1) || (n != n1)
+		@printf "QWTWPlot qchange: bad input array length (%d) \n" n
 		error("qchange: wrong array length")
 		return -89
 	end
@@ -816,6 +833,10 @@ function qEnableCoordBroadcast(x::Vector{Float64}, y::Vector{Float64}, z::Vector
 
 	n = length(time)
 
+	if n < 1
+		@printf "QWTWPlot qEnableCoordBroadcast: bad input array length (%d) \n" n
+	end
+
 	ccall(qwtEnableBroadcastH, Cvoid, (Ptr{Float64}, Ptr{Float64}, Ptr{Float64},
 			 Ptr{Float64}, Int32),
 		x, y, z , time, n);
@@ -876,17 +897,27 @@ this function returns ID of the line created. hopefully you can use it in some o
 
 """
 function qplot2(x::Array{Float64}, y::Array{Float64}, time::Array{Float64}, name::String, style::String, lineWidth=1, symSize=1):: Int32
-	global qwtwPlot2H, qwtwLibHandle, started
+	global qwtwPlot2H, qwtwLibHandle, started, qwtwDebugMode
 	if (qwtwLibHandle == 0) || (!started)
 		@printf "not started (was qstart() called?)\n"
 		return -88
 	end
-
-	@assert (length(x) == length(y))
+	if ((length(x) != length(y)) || (length(y) != length(time))) 
+		@printf "QWTWPlot qplot2 error: different array length \n"
+		return -75
+	end
+	
 	n = length(x)
+	if n < 1
+		@printf "QWTWPlot qplot2 error: bad array length \n"
+		return -76
+	end
 	ww::Int32 = lineWidth;
 	s::Int32 = symSize;
 	test::Int32 = -50
+	if qwtwDebugMode
+		@printf "qplot2: (%s) (%s) n=%d \n " name style n
+	end
 	try 
 		test = ccall(qwtwPlot2H, Int32, (Ptr{Float64}, Ptr{Float64}, Int32, Ptr{UInt8}, Ptr{UInt8}, Int32, Int32, Ptr{Float64}),
 			x, y, n, name, style, ww, s, time);
