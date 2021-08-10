@@ -20,6 +20,7 @@ end
 # DLLs and function handles below:
 qwtwLibHandle = 0
 qwtwFigureH = 0
+qwtwClipGroupH = 0
 qwtwRemoveLineH = 0
 qwtwDebugMode = false
 qwtwChangeLineH = 0
@@ -169,7 +170,7 @@ function qstart(;debug = false, qwtw_test = false, libraryName = "libqwtw")::Int
 
 	global qwtwLibHandle, qwtwFigureH, qwtwMapViewH,  qwtwsetimpstatusH, qwtwCLearH, qwtwPlotH
 	global qwtwPlot2H, qwtwXlabelH, qwtwYlabelH, qwywTitleH, qwtwVersionH, qwtwMWShowH, qwtwRemoveLineH
-	global qwtEnableBroadcastH, qwtDisableBroadcastH, qwtwChangeLineH
+	global qwtEnableBroadcastH, qwtDisableBroadcastH, qwtwChangeLineH, qwtwClipGroupH
 	#global qwtwPlot3DH, qwtwFigure3DH
 	global qwtStartH, qwtStopH, started
 	global old_path, old_qtPath, oldLdLibPath
@@ -273,6 +274,7 @@ function qstart(;debug = false, qwtw_test = false, libraryName = "libqwtw")::Int
 	qwtStopH = Libdl.dlsym(qwtwLibHandle, "qwtclose")
 	qwtwRemoveLineH = Libdl.dlsym(qwtwLibHandle, "qwtremove")
 	qwtwChangeLineH = Libdl.dlsym(qwtwLibHandle, "qwtchange")
+	qwtwClipGroupH = Libdl.dlsym(qwtwLibHandle, "qwtclipgroup")
 
 	try
 		qwtEnableBroadcastH = Libdl.dlsym(qwtwLibHandle, "qwtEnableCoordBroadcast")
@@ -420,6 +422,31 @@ create new plot.
 function qfigure()
 	qfigure(0);
 end;
+
+"""
+qclipgrp(gr) 
+
+set current 'clip group';\
+all (new) subsequent plots/figires will belong to this group. if press 'clip' button, 
+then if will work only for plots from the same group. 
+
+useful in case some of the plots have another time range.
+
+"""
+function qclipgrp(gr) 
+	global qwtwClipGroupH, qwtwLibHandle, started
+	if (qwtwLibHandle == 0) || (!started)
+		@printf "not started (was qstart() called?)\n"
+		return
+	end
+	if qwtwClipGroupH == 0
+		@printf "clip groups are not supported, sorry\n"
+		return
+	end
+
+	ccall(qwtwClipGroupH, Cvoid, (Int32,), Int32(gr));
+end
+export qclipgrp
 
 """
 	qremove(id::Int32)
