@@ -37,6 +37,8 @@ First, select some interesting area on one plot:
 After this, press "clip" button:
 
  ![](docs/img/clip-2.png "clipping examples")
+ 
+ BTW, if you do not want that *all* plots do resize after this, use `qclipgrp` function. See more details in qwexample.jl about how to use it.
 
 
 * you can create a "Power Spectral Dencity" plot for some  (selected) area of your plot, by pressing "f" button
