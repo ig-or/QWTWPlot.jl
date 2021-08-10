@@ -100,6 +100,15 @@ qfigure(3);
 qplot2(x, y, t, "circle #1", "-r", 2)
 qtitle("circle")
 
+
+#=  if you do not need _all_ the plots to adjust its range, when you press the 'clip' button,
+	then you can use qclipgrp(gr) function. All the plot belong to some 'clip group'.
+	after call to 'qclipgrp', new plots will be created with another 'clip group'.
+	So, 'clip' button will work only for plots in the same group.
+
+=#
+#qclipgrp(1) # next plots will belong to another 'clip group #1'
+
 # now press "[]" buttol in order to make a circle look like circle
 
 # try to use left button ("ARROW") on a circle plot - it also works

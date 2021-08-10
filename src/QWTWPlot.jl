@@ -274,7 +274,12 @@ function qstart(;debug = false, qwtw_test = false, libraryName = "libqwtw")::Int
 	qwtStopH = Libdl.dlsym(qwtwLibHandle, "qwtclose")
 	qwtwRemoveLineH = Libdl.dlsym(qwtwLibHandle, "qwtremove")
 	qwtwChangeLineH = Libdl.dlsym(qwtwLibHandle, "qwtchange")
-	qwtwClipGroupH = Libdl.dlsym(qwtwLibHandle, "qwtclipgroup")
+
+	try
+		qwtwClipGroupH = Libdl.dlsym(qwtwLibHandle, "qwtclipgroup")
+	catch
+		@printf "WARNING: clip groups disabled (wrong qwtw version?) \n"
+	end
 
 	try
 		qwtEnableBroadcastH = Libdl.dlsym(qwtwLibHandle, "qwtEnableCoordBroadcast")
@@ -426,7 +431,8 @@ end;
 """
 qclipgrp(gr) 
 
-set current 'clip group';\
+set current 'clip group' \
+gr is the ID of this new group \
 all (new) subsequent plots/figires will belong to this group. if press 'clip' button, 
 then if will work only for plots from the same group. 
 
