@@ -56,6 +56,7 @@ After this (in new small window) select lines for which you'd like to create a P
 ![](docs/img/meta-window.png "meta-window example")
 
 * this library have UDP client&server, so it can display incoming "marker" messages and send out marker positions when using "marker gui"
+ * possible to use log axis scale
 
  * Maps functionality returned. You can draw on maps. Please see example for the details.
  ![](docs/img/map-example.png "marker examples")

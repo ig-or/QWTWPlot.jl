@@ -408,25 +408,27 @@ create a new plot window, OR make plot (with this ID `n`) 'active'.
 looks like `n` have to be an integer number (this plot ID, or zero if you do not care).\\
 after this function, this plot is the "active plot". \\
 If `n == 0` then another new plot will be created.
+xAxisType and yAxisType could be :aLinear (default) or :aLog (logarithmic)
+
+Returns ID of the created plot
 """
-function qfigure(n)
+function qfigure(n::Integer = 0; xAxisType=:aLinear, yAxisType=:aLinear)::Int32
 	global qwtwFigureH, started
 	if !started
 		@printf "not started (was qstart() called?)\n"
-		return
+		return 0
 	end
-	ccall(qwtwFigureH, Cvoid, (Int32,), n);
-	return
+	flags::UInt32 = 0
+	if xAxisType == :aLog
+		flags |= 1
+	end
+	if yAxisType == :aLog
+		flags |= 2
+	end
+	test = ccall(qwtwFigureH, Int32, (Int32, UInt32), n, flags);
+	return test
 end;
 
-"""
-	qfigure()
-
-create new plot.
-"""
-function qfigure()
-	qfigure(0);
-end;
 
 """
 	qclipgrp(gr) 
@@ -476,18 +478,19 @@ export qremove
 create a new  plot window to draw on a map (with specific window ID)\\
 'n' is Int32
 """
-function qfmap(n)
+function qfmap(n)::Int32
 	global qwtwMapViewH, qwtwLibHandle, started
 	if (qwtwLibHandle == 0) || (!started)
 		@printf "not started (was qstart() called?)\n"
-		return
+		return 0
 	end
 	if qwtwMapViewH == 0
 		@printf "map vew not supported, sorry\n"
-		return
+		return 0
 	end
 
-	ccall(qwtwMapViewH, Cvoid, (Int32,), n);
+	test = ccall(qwtwMapViewH, Int32, (Int32,), n);
+	return test;
 end;
 
 """
@@ -495,8 +498,8 @@ end;
 
 create a new  plot window to draw on a map.
 """
-function qfmap()
-	qfmap(0)
+function qfmap()::Int32
+	return qfmap(0)
 end;
 
 """
@@ -506,19 +509,19 @@ create a new  plot window to draw 3D lines / surfaces.
 
 currently works only for Linux (?)
 """
-function qmgl(n = 0)
+function qmgl(n = 0)::Int32
 	global qwtMglH, qwtwLibHandle, started
 	if (qwtwLibHandle == 0) || (!started)
 		@printf "not started (was qstart() called?)\n"
-		return
+		return 0
 	end
 	if qwtMglH == 0
 		@printf "3D not supported, sorry\n"
-		return
+		return 0
 	end
 
-	ccall(qwtMglH, Cvoid, (Int32,), n);
-	return
+	test = ccall(qwtMglH, Int32, (Int32,), n);
+	return test
 end;
 
 export qmgl
