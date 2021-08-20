@@ -176,6 +176,33 @@ qplot2(x1, y1, t, "$N test 2", " eg", 1, 3)
 qxlabel("?"); qylabel("?"); qtitle("$N points test");
 
 
+#= qfigure can return a Int32 value, "plot ID", which can be used 
+ for example
+	f1 = qfigure(); qplot(....) 
+	f2 = qfigure(); qplot(....)
+	f3 = qfigure(); qplot(....)
+	now we can add something to the plot #2:
+	qfigure(f2); qplot(....)
+=#
+
+#= log scale supported
+=#
+x = collect(1.0:0.1:25.)
+y = sin.(x)
+# this is (default) linear scale:
+f1 = qfigure(); qplot1(x, y, "test normal scale", "-eb", 4)
+qtitle("normal linear scale")
+
+# x axis log scale:
+f2 = qfigure(xAxisType = :aLog); qplot1(x, y, "test x axis log scale", "-eb", 4)
+qtitle("x axis log scale")
+
+# both axis log scale:
+f3 = qfigure(xAxisType = :aLog, yAxisType = :aLog)
+qplot1(x, y .^2 .+ 0.001, "log scale", "-em", 4)
+qtitle("x and y axis log scale")
+
+
 # now lets try to draw a map;
 mwn = 4 # for this small example, we have only 4 points
 north = [55.688713, 55.698713, 55.678713, 55.60]; # coords in degrees
