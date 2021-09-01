@@ -82,6 +82,9 @@ After this (in new small window) select lines for which you'd like to create a P
  ![](docs/img/pm.png "3permanent markers example")
 
 
+#### Settings 
+are stored in ~/.qwtw/settings.json file. In rare cases you may want to update this file manually. 
+ * `pickerDigitsNumber` is the number of digits (with pointer coordinates) displayed near mouse cursor when you press left mouse button on a plot window (in 'marker' mode).
 
  I suspect the underlying qwtw library is not thread-safe, so would not recommend to use it from different julia threads simultaneously. 
  
