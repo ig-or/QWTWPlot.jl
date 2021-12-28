@@ -41,6 +41,7 @@ qwtEnableBroadcastH = 0
 qwtMglH = 0
 qwtMglLine = 0
 qwtMglMesh = 0
+#qwtSetCBH = 0
 
 qwtStartH = 0
 qwtStartDebugH = 0
@@ -149,6 +150,19 @@ function addEnvItem(item, var::String; debug = false)
 	end
 end
 
+#=
+function qCallback(fID, lineID, index, fx, fy, x, y, z, t, legend) :: Cvoid
+	@printf "qCallback  t = %f\n" t
+end
+
+function qcbTest1() :: Cvoid
+#	@printf "qcbTest1 \n"
+end
+
+function qcbTest2(index) :: Cvoid
+	@printf "qcbTest2  %d \n"  index
+end
+=#
 """
 	qstart(;debug = false, qwtw_test = false, libraryName = "libqwtw")::Int32
 starts the qwtw "C" library. 
@@ -175,6 +189,7 @@ function qstart(;debug = false, qwtw_test = false, libraryName = "libqwtw")::Int
 	global qwtStartH, qwtStopH, started
 	global old_path, old_qtPath, oldLdLibPath
 	global qwtMglH, qwtMglLine, qwtMglMesh
+	#global qwtSetCBH
 
 	if started
 		@printf "qwtw already started\n"
@@ -295,7 +310,26 @@ function qstart(;debug = false, qwtw_test = false, libraryName = "libqwtw")::Int
 	catch
 		@printf "WARNING: 3D features disabled \n"
 	end
+#=
+	try 
+		qwtSetCBH = Libdl.dlsym(qwtwLibHandle, "setcallback")
 
+		qcbTest1H = Libdl.dlsym(qwtwLibHandle, "setcallback_t1")
+		qcbTest2H = Libdl.dlsym(qwtwLibHandle, "setcallback_t2")
+
+		cbTest1 = @cfunction(qcbTest1, Cvoid, ())
+		ccall(qcbTest1H, Cvoid, (Ptr{Cvoid},), cbTest1);
+
+		#if qwtSetCBH != 0
+		#	cb_c = @cfunction(qCallback, Cvoid, (Cint, Cint, Cint, Cint, Cint, 
+		#		Cdouble, Cdouble, Cdouble, Cdouble, Cstring))
+#
+		#	ccall(qwtSetCBH, Cvoid, (Ptr{Cvoid},), cb_c);
+		#end
+	catch
+		@printf "WARNING: setcallback features disabled \n"
+	end
+=#
 	# hangs tight!!!!
 	if debug
 		@printf "starting qstart in debug mode \n"
@@ -659,6 +693,23 @@ function qclear()
 	ccall(qwtwCLearH, Cvoid, ());
 	return
 end
+#=
+function qsetcallback(cb)
+	global qwtSetCBH, qwtwLibHandle, started
+	if (qwtwLibHandle == 0) || (!started)
+		@printf "not started (was qstart() called?)\n"
+		return
+	end
+	if qwtSetCBH == 0
+		@printf "qwtSetCBH == 0 \n"
+		return
+	end
+	
+	#ccall(qwtSetCBH, Cvoid, (cb,));
+	return
+end
+export qsetcallback
+=#
 
 """
 	qsmw()
