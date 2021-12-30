@@ -4,10 +4,12 @@ authors = ["ig-or <19777752+ig-or@users.noreply.github.com> and contributors"]
 version = "1.4.0"
 
 [deps]
+JSON3 = "0f8b85d8-7281-11e9-16c2-39a750bddbf1"
 Libdl = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 Qt_jll = "ede63266-ebff-546c-83e0-1c6fb6d0efc8"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+Sockets = "6462fe0b-24de-5631-8697-dd941f90decc"
 marble_jll = "678d7417-9a84-558b-a975-2deb8d71bebc"
 qwtw_jll = "d5de49f9-40c9-5bd5-980e-f7e357ea5903"
 
