@@ -4,6 +4,7 @@
 
 using QWTWPlot 
 using Random # just for data generation
+using Printf
 
 qstart() # sorry, have to call this explicity here, not in __init__
 #qstart(debug=true, qwtw_test = true, libraryName = "qwtw")
@@ -246,6 +247,44 @@ f1 = [sin((i - 10.0) / 2.0) * sin((j - 10) / 3.0) * 10.0 for i=1:20, j = 1:20]
 qmglmesh(f, -10.0, 10., -10., 10.0, type = 1)
 qmglmesh(f1, -10.0, 10., -10., 10.0)
 
+
+# ================  callback ==============================
+#  now you can make your own function to be called, when 
+# you do a mouse click on a plot.
+# following (exported from a module) struct is a parameter to your callback function:
+
+#
+#	information to the callback function 
+#	about the mouse click
+#
+#
+#struct QCBInfo
+#	type::Int32		# callback type ('1' for simple mouse click.. something else in case 'external UDP message info')
+#	plotID::Int32	# ID of the plot window
+#	lineID::Int32	# ID of the closest line
+#	index::Int32	# closest point index
+#	xx::Int32		# window coord
+#	yy::Int32		# window coord
+#
+#	# closest point info
+#	x::Float64	# X coord
+#	y::Float64	# Y coord
+#	z::Float64  # Z coord (probably zero, when 'type' == 1)
+#	time::Float64 # time info
+#	label::String # label of the selected line
+#end
+
+# lets create and test a simple callback function:
+# our callback: just printing some values
+function my_callback(q::QCBInfo)
+	@printf "plot %d, line %d (%s);   index = %d; xx = %d; yy = %d \n" q.plotID q.lineID q.label q.index q.xx  q.yy
+	@printf "x = %f;  y = %f; z = %f; time = %f\n\n" q.x  q.y q.z q.time
+end
+# lets register it:
+qsetCallback(my_callback)
+#now, you can click on the plots (when "marker mode" enabled! usually this means that 'arrow button' was pressed)
+# and see how your callback is working.
+# BTW it is called from the different Julia thread, so be careful
 
 
 # if everything is working as you need, you can

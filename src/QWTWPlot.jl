@@ -24,6 +24,7 @@ end
 # DLLs and function handles below:
 qwtwLibHandle = 0
 qwtwFigureH = 0
+qwtwServiceH = 0
 qwtwClipGroupH = 0
 qwtwRemoveLineH = 0
 qwtwDebugMode = false
@@ -61,31 +62,34 @@ cfg = Dict()	# settings info
 pleaseStopUdp = false
 cbLock = ReentrantLock()
 
-
 """
 	information to the callback function 
 	about the mouse click
 """
 struct QCBInfo
-	type::Int32
+	type::Int32		# callback type ('1' for simple mouse click.. something else in case 'external UDP message info')
 	plotID::Int32	# ID of the plot window
 	lineID::Int32	# ID of the closest line
 	index::Int32	# closest point index
 	xx::Int32		# window coord
 	yy::Int32		# window coord
 
-	# closest point
-	x::Float64
-	y::Float64
-	z::Float64
-	time::Float64
-	label::String
+	# closest point info
+	x::Float64	# X coord
+	y::Float64	# Y coord
+	z::Float64  # Z coord (probably zero, when 'type' == 1)
+	time::Float64 # time info
+	label::String # label of the selected line
 end
 export QCBInfo
 
 cbFunction  = function(info::QCBInfo) # callback user function
 
 end
+
+#lastUdpPacket = QCBInfo(0, 0, 0, 0, 0, 0, 0.0, 0.0, 0.0, 0.0, "hello")
+lastUdpPacket = zeros(UInt8, 80)
+export lastUdpPacket
 
 """
 UDP reader task
@@ -96,11 +100,22 @@ function udpDataReader()
 	global cbFunction
 	global qwtwDebugMode
 	global cbLock
+	global lastUdpPacket
+	global qwtwServiceH
 
 	if udpPort == 0
-		@printf "cannot start udpDataReader \n"
+		@printf " 1 cannot start udpDataReader \n"
 		return
 	end
+	if qwtwServiceH == 0
+		@printf " 2 cannot start udpDataReader \n"
+		return
+	end
+	type = 0; plotID = 0; lineID = 0; index = 0; xx = 0; yy = 0; iks = 0.0; igrek = 0.0; zet = 0.0; time = 0.0; label = "hello";
+	ii = QCBInfo(type, plotID, lineID, index, xx, yy, iks, igrek, zet, time, label)
+	x = zeros(UInt8, 88)
+	nx = 0; eos = 84; k = 1;
+
 	if qwtwDebugMode
 		@printf "starting udp data reader on port %d\n" udpPort
 	end
@@ -109,19 +124,75 @@ function udpDataReader()
 	bind(sock, ip"127.0.0.1", udpPort)
 	lock(cbLock)
 	while pleaseStopUdp == false
-		@printf "udpDataReader waiting for the data from UDP.. \n"
-		mydata=reinterpret(Int8,recv(sock))    # ??
+		#@printf "udpDataReader waiting for the data from UDP.. \n"
+		x = recv(sock)
+		#x=reinterpret(UInt8, packet)    # ??
+		lastUdpPacket = x
 		if pleaseStopUdp
 			break
 		end
+		nx = length(x)
+		if nx < 80
+			if qwtwDebugMode
+				@printf "udpDataReader() got %d bytes" nx
+			end
+			continue
+		end
+		
+		try
+			time = reinterpret(Float64, x[5:12])[1]
+			iks =  reinterpret(Float64, x[13:20])[1]
+			igrek =  reinterpret(Float64, x[21:28])[1]
+			zet =  reinterpret(Float64, x[29:36])[1]
+			
+			index =  reinterpret(Int32, x[37:40])[1]
 
-		i = QCBInfo(1, 1, 1, 1, 1, 1, 0.0, 0.0, 0.0, 0.0, "HELLO")
-		#if qwtwDebugMode
-			@printf "got %d bytes; UDP index = %d \n" length(mydata) i.index
-			print(typeof(mydata))
-			print(mydata)
-		#end
-		cbFunction(i)
+			xx = reinterpret(Int32, x[41:44])[1]
+			yy =  reinterpret(Int32, x[45:48])[1]
+			plotID =  reinterpret(Int32, x[49:52])[1]
+			lineID = reinterpret(Int32, x[53:56])[1]
+			type = reinterpret(Int32, x[57:60])[1]
+			
+			eos = 84
+			for k= 61:84
+				if x[k] == 0
+					eos = k
+					break
+				end
+			end
+			if eos == 61
+				label = ""
+			else
+				label = String(x[61:eos-1])
+			end
+
+			ii = QCBInfo(type, plotID, lineID, index, xx, yy, iks, igrek, zet, time, label)
+
+		catch ex
+			if qwtwDebugMode
+				@printf "cannot process picker message\n "
+				bt = backtrace()
+				msg = sprint(showerror, ex, bt)
+				@printf "%s\n" msg
+			end
+			continue
+		end
+		if qwtwDebugMode
+			@printf "got %d bytes  \n" length(x) 
+			print(typeof(x))
+			@printf "\n"
+			#print(x)
+		end
+		try
+			stest1 = ccall(qwtwServiceH, Int32, (Int32,), 1);
+			cbFunction(ii)
+			stest2 = ccall(qwtwServiceH, Int32, (Int32,), 2);
+		catch ex
+			@printf "callback function failed\n "
+			bt = backtrace()
+			msg = sprint(showerror, ex, bt)
+			@printf "%s\n" msg
+		end
 		counter +=1
     end  ## this loop will never terminate
     close(sock)
@@ -267,7 +338,7 @@ function qstart(;debug = false, qwtw_test = false, libraryName = "libqwtw")::Int
 	# this could be still useful:
 	#if debug qwtw_libName *= "d"; end
 
-	global qwtwLibHandle, qwtwFigureH, qwtwMapViewH,  qwtwsetimpstatusH, qwtwCLearH, qwtwPlotH
+	global qwtwLibHandle, qwtwFigureH, qwtwMapViewH,  qwtwsetimpstatusH, qwtwCLearH, qwtwPlotH, qwtwServiceH
 	global qwtwPlot2H, qwtwXlabelH, qwtwYlabelH, qwywTitleH, qwtwVersionH, qwtwMWShowH, qwtwRemoveLineH
 	global qwtEnableBroadcastH, qwtDisableBroadcastH, qwtwChangeLineH, qwtwClipGroupH
 	#global qwtwPlot3DH, qwtwFigure3DH
@@ -315,7 +386,7 @@ function qstart(;debug = false, qwtw_test = false, libraryName = "libqwtw")::Int
 	marblePluginPath = joinpath(marble_jll.artifact_dir, "plugins")
 
 	if qwtw_test
-		@printf "qwtw debug; loading %s .. \n" qwtw_libName
+		@printf "qwtw test; loading %s .. \n" qwtw_libName
 		@printf "\nPATH = %s\n\n" ENV["PATH"]
 	else
 		@static if Sys.iswindows() 
@@ -348,7 +419,11 @@ function qstart(;debug = false, qwtw_test = false, libraryName = "libqwtw")::Int
 		@static if Sys.iswindows() 
 
 		else
-			@printf "LD_LIBRARY_PATH: %s \n\n" String(ENV["LD_LIBRARY_PATH"])
+			try
+				@printf "LD_LIBRARY_PATH: %s \n\n" String(ENV["LD_LIBRARY_PATH"])
+			catch
+				@printf "NO LD_LIBRARY_PATH \n"
+			end
 		end
 		@printf "PATH: %s \n\n" String(ENV["PATH"])
 		@printf "\n"
@@ -393,6 +468,8 @@ function qstart(;debug = false, qwtw_test = false, libraryName = "libqwtw")::Int
 	qwtStopH = Libdl.dlsym(qwtwLibHandle, "qwtclose")
 	qwtwRemoveLineH = Libdl.dlsym(qwtwLibHandle, "qwtremove")
 	qwtwChangeLineH = Libdl.dlsym(qwtwLibHandle, "qwtchange")
+
+	qwtwServiceH = Libdl.dlsym(qwtwLibHandle, "qwtservice")
 
 	try
 		qwtwClipGroupH = Libdl.dlsym(qwtwLibHandle, "qwtclipgroup")
@@ -1227,20 +1304,27 @@ function qsetCallback(cb)
 	global pleaseStopUdp
 	global udpPort
 	global cbTaskH
+	global qwtwDebugMode
 	global cbLock
+	#global qwtwServiceH
 
-	@printf "qsetCallback: istaskdone1(cbTaskH): %d\n" istaskdone(cbTaskH)
+	if qwtwDebugMode
+		@printf "qsetCallback: istaskdone1(cbTaskH): %d\n" istaskdone(cbTaskH)
+	end
 	#if istaskstarted(cbTaskH) # stop the task
 	if islocked(cbLock)
-
-		@printf "stopping the task..\n"
+		if qwtwDebugMode
+			@printf "stopping the task..\n"
+		end
 		pleaseStopUdp = true
 		sock=UDPSocket()
 		for i = 1:25
 			send(sock, ip"127.0.0.1", udpPort, "stop\n")
 		end
 
-		@printf "waiting for the task to finish..\n"
+		if qwtwDebugMode
+			@printf "waiting for the task to finish..\n"
+		end
 		#while !istaskdone(cbTaskH)
 		#end
 
@@ -1248,8 +1332,10 @@ function qsetCallback(cb)
 		#unlock(cbLock)
 
 		wait(cbTaskH)
-		@printf "finished ..\n"
-		@printf "qsetCallback: istaskdone2(cbTaskH): %d\n" istaskdone(cbTaskH)
+		if qwtwDebugMode
+			@printf "finished ..\n"
+			@printf "qsetCallback: istaskdone2(cbTaskH): %d\n" istaskdone(cbTaskH)
+		end
 
 		cbTaskH = @task udpDataReader();
 	else
@@ -1268,7 +1354,7 @@ function qsetCallback(cb)
 
 	pleaseStopUdp = false
 	schedule(cbTaskH)
-	
+	return
 end
 export qsetCallback
 

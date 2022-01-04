@@ -69,7 +69,7 @@ After this (in new small window) select lines for which you'd like to create a P
 
  also,  it's possible to remove or change existing lines on plots (see an example how to do it)(implemented for simple 2D plots).
 
- ### keyboard shortcuts
+ #### keyboard shortcuts
  * _M_ switch to "marker mode"
  * _P_ switch to "pan mode"
  * _Z_ switch to "zoom mode"
@@ -81,10 +81,52 @@ After this (in new small window) select lines for which you'd like to create a P
  How those (permanent) markers looks like:
  ![](docs/img/pm.png "3permanent markers example")
 
+ #### user callbacks
+
+  now you can make your own function to be called, when  you do a mouse click on a plot. `qwexample.jl` supposed to have more examples about it.
+ following (exported from a module) struct is a parameter to your callback function:
+
+```
+struct QCBInfo
+	type::Int32		# callback type ('1' for simple mouse click.. something else in case 'external UDP message info')
+	plotID::Int32	# ID of the plot window
+	lineID::Int32	# ID of the closest line
+	index::Int32	# closest point index
+	xx::Int32		# window coord
+	yy::Int32		# window coord
+
+	# closest point info
+	x::Float64	# X coord
+	y::Float64	# Y coord
+	z::Float64  # Z coord (probably zero, when 'type' == 1)
+	time::Float64 # time info
+	label::String # label of the selected line
+end
+```
+ lets create and test a simple callback function:
+```
+function my_callback(q::QCBInfo)
+	@printf "plot %d, line %d (%s);   index = %d; xx = %d; yy = %d \n" q.plotID q.lineID q.label q.index q.xx  q.yy
+	@printf "x = %f;  y = %f; z = %f; time = %f\n\n" q.x  q.y q.z q.time
+end
+```
+
+lets register it:
+
+```
+
+qsetCallback(my_callback)
+```
+
+now, you can click on the plots (when "marker mode" enabled! usually this means that 'arrow button' was pressed)
+ and see how your callback is working.
+ BTW it is called from the different Julia thread, so be careful. But sometimes it's OK to use `qwtw` functions from a callbacks. 
+
 
 #### Settings 
 are stored in ~/.qwtw/settings.json file. In rare cases you may want to update this file manually. 
  * `pickerDigitsNumber` is the number of digits (with pointer coordinates) displayed near mouse cursor when you press left mouse button on a plot window (in 'marker' mode).
+ * 'udp_server_port' and 'udp_client_port' ports have to be available to UDP protocols. Most functionality is implemented via shared memory, but there is still some parts relying on UDP. 
 
  I suspect the underlying qwtw library is not thread-safe, so would not recommend to use it from different julia threads simultaneously. 
  
