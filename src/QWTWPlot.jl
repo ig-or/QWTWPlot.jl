@@ -1210,7 +1210,7 @@ function qplot2(x::Array{Float64}, y::Array{Float64}, time::Array{Float64}, name
 		return -88
 	end
 	if ((length(x) != length(y)) || (length(y) != length(time))) 
-		@printf "QWTWPlot qplot2 error: different array length \n"
+		@printf "QWTWPlot qplot2 error: different array length. x %d, y %d, t %d \n" length(x)  length(y) length(time)
 		return -75
 	end
 	

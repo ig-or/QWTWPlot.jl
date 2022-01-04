@@ -13,7 +13,8 @@ It is very useful for data analysis (like if you have a dynamic systems with a b
 
 BTW, this is possible because of https://github.com/JuliaPackaging/BinaryBuilder.jl
 
-look at usage example here: https://github.com/ig-or/QWTWPlot.jl/blob/master/src/qwexample.jl
+look at usage example here: https://github.com/ig-or/QWTWPlot.jl/blob/master/src/qwexample.jl   and for callback also here https://github.com/ig-or/QWTWPlot.jl/blob/master/src/cbtest.jl,
+or just `] dev QWTWPlot`
 
 
 ## the most useful features
@@ -121,6 +122,7 @@ qsetCallback(my_callback)
 now, you can click on the plots (when "marker mode" enabled! usually this means that 'arrow button' was pressed)
  and see how your callback is working.
  BTW it is called from the different Julia thread, so be careful. But sometimes it's OK to use `qwtw` functions from a callbacks. 
+ File `cbtest.jl` has an example how to use qwtw functions from a callback.
 
 
 #### Settings 
@@ -128,5 +130,5 @@ are stored in ~/.qwtw/settings.json file. In rare cases you may want to update t
  * `pickerDigitsNumber` is the number of digits (with pointer coordinates) displayed near mouse cursor when you press left mouse button on a plot window (in 'marker' mode).
  * 'udp_server_port' and 'udp_client_port' ports have to be available to UDP protocols. Most functionality is implemented via shared memory, but there is still some parts relying on UDP. 
 
- I suspect the underlying qwtw library is not thread-safe, so would not recommend to use it from different julia threads simultaneously. 
+ I suspect the underlying qwtw library is not thread-safe, so would not recommend to use it from different julia threads simultaneously. But you should be able to call most of the qwtw functions from a 'callback'.
  

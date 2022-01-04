@@ -286,6 +286,8 @@ qsetCallback(my_callback)
 # and see how your callback is working.
 # BTW it is called from the different Julia thread, so be careful
 
+# cbtest.jl file has bigger and more interesting callback example
+
 
 # if everything is working as you need, you can
 # close all the plots with following command:
