@@ -1,7 +1,7 @@
 name = "QWTWPlot"
 uuid = "193516b8-fe0d-4284-b46c-e203758f96c4"
 authors = ["ig-or <19777752+ig-or@users.noreply.github.com> and contributors"]
-version = "1.5.2"
+version = "1.5.1"
 
 [deps]
 JSON3 = "0f8b85d8-7281-11e9-16c2-39a750bddbf1"
