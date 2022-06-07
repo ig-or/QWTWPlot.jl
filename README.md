@@ -84,17 +84,23 @@ After this (in new small window) select lines for which you'd like to create a P
 
  #### user callbacks
 
-  now you can make your own function to be called, when  you do a mouse click on a plot. `qwexample.jl` supposed to have more examples about it.
+  now you can make your own function to be called, when  you do a mouse click on a plot, or pressing 'clip' button. `cbtest.jl` supposed to have more examples about it.
+
  following (exported from a module) struct is a parameter to your callback function:
 
 ```
+
+"""
+	information for the callback function 
+	about the mouse click
+"""
 struct QCBInfo
 	type::Int32		# callback type ('1' for simple mouse click.. something else in case 'external UDP message info')
 	plotID::Int32	# ID of the plot window
 	lineID::Int32	# ID of the closest line
 	index::Int32	# closest point index
-	xx::Int32		# window coord
-	yy::Int32		# window coord
+	xx::Int32		# x window coord
+	yy::Int32		# y window coord
 
 	# closest point info
 	x::Float64	# X coord
@@ -112,7 +118,7 @@ function my_callback(q::QCBInfo)
 end
 ```
 
-lets register it:
+and register it:
 
 ```
 
@@ -125,10 +131,42 @@ now, you can click on the plots (when "marker mode" enabled! usually this means 
  File `cbtest.jl` has an example how to use qwtw functions from a callback.
 
 
+Also, it's possible to setup a callback to a 'clip' function. 
+following (exported from a module) struct is a parameter to your callback function:
+```
+"""
+information about the 'clip' callback (when the user is pressing 'clip' button )
+"""
+struct QClipCallbackInfo
+	t1::Float64 	# time 1 (left)
+	t2::Float64		# time 2 (right)
+	clipGroup::Int32 # clip group (every plot has its group)
+	havePos::Bool       # true if x y z are valid
+	x1::Float64		# point corresponding to time1, if any
+	y1::Float64
+	z1::Float64
+	x2::Float64 	# point corresponding to time2, if any
+	y2::Float64
+	z2::Float64
+end
+```
+How to define and register very simple 'clip' callback:
+```
+function clipCallback(q::QClipCallbackInfo)
+	@printf "\nclipCallback!\n\tt1 = %f\n\tt2 = %f; clipGroup=%d\n\n" q.t1  q.t2 q.clipGroup
+	return
+end
+
+qsetClipCallback(clipCallback)
+```
+
+
 #### Settings 
 are stored in ~/.qwtw/settings.json file. In rare cases you may want to update this file manually. 
  * `pickerDigitsNumber` is the number of digits (with pointer coordinates) displayed near mouse cursor when you press left mouse button on a plot window (in 'marker' mode).
- * 'udp_server_port' and 'udp_client_port' ports have to be available to UDP protocols. Most functionality is implemented via shared memory, but there is still some parts relying on UDP. 
+ * 'udp_server_port' and 'udp_client_port' port numbers have to be available to UDP protocols. Most functionality is implemented via shared memory, but there is still some parts relying on UDP. 
 
- I suspect the underlying qwtw library is not thread-safe, so would not recommend to use it from different julia threads simultaneously. But you should be able to call most of the qwtw functions from a 'callback'.
+ I suspect the underlying qwtw library is not thread-safe, so would not recommend to use it from different julia threads simultaneously. But you should be able to call most of the qwtw functions from a 'callback' (due to special 'guard' features).
+
+ Best regards
  

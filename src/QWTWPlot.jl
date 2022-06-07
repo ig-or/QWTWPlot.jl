@@ -15,8 +15,7 @@ import qwtw_jll
 import marble_jll
 
 function __init__()
-	# this is not OK  qwtwStart(Int64(0)) # start in normal mode
-
+	# this is not OK  qStart() # start in normal mode
 	global cbTaskH # callback task handler
 	cbTaskH = @task udpDataReader();
 end
@@ -42,6 +41,7 @@ qwywTitleH = 0
 qwtwVersionH = 0
 qwtwMWShowH = 0
 qwtEnableBroadcastH = 0
+qwtDisableBroadcastH = 0
 
 qwtMglH = 0
 qwtMglLine = 0
@@ -64,7 +64,7 @@ cbLock = ReentrantLock()
 errrorBreak = false	# do 'error()' when parameters are not OK
 
 """
-	information to the callback function 
+	information for the callback function 
 	about the mouse click
 """
 struct QCBInfo
@@ -72,8 +72,8 @@ struct QCBInfo
 	plotID::Int32	# ID of the plot window
 	lineID::Int32	# ID of the closest line
 	index::Int32	# closest point index
-	xx::Int32		# window coord
-	yy::Int32		# window coord
+	xx::Int32		# x window coord
+	yy::Int32		# y window coord
 
 	# closest point info
 	x::Float64	# X coord
@@ -82,23 +82,179 @@ struct QCBInfo
 	time::Float64 # time info
 	label::String # label of the selected line
 end
+function QCBInfo()
+	return QCBInfo(0, 0, 0, 0, 0, 0, 0.0, 0.0, 0.0, 0.0, "empty")
+end
 export QCBInfo
 
-cbFunction  = function(info::QCBInfo) # callback user function
-
+cbFunction  = function(info::QCBInfo) # 'picker' callback user function
+	# doing nothing by default
 end
 
-#lastUdpPacket = QCBInfo(0, 0, 0, 0, 0, 0, 0.0, 0.0, 0.0, 0.0, "hello")
+"""
+information about the 'clip' callback (when the user is pressing 'clip' button )
+"""
+struct QClipCallbackInfo
+	t1::Float64 	# time 1 (left)
+	t2::Float64		# time 2 (right)
+	clipGroup::Int32 # clip group (every plot has its group)
+	havePos::Bool       # true if x y z are valid
+	x1::Float64		# point corresponding to time1, if any
+	y1::Float64
+	z1::Float64
+	x2::Float64 	# point corresponding to time2, if any
+	y2::Float64
+	z2::Float64
+end
+function QClipCallbackInfo() 
+	return QClipCallbackInfo(0.0, 0.0, 0, false, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+end
+
+export QClipCallbackInfo
+
+clipCallbackFunction = function(info::QClipCallbackInfo) # 'clip' callback user function
+	# doing nothing by default
+end
+
 lastUdpPacket = zeros(UInt8, 80)
-export lastUdpPacket
+export lastUdpPacket # just for testing/debugging
 
 """
-UDP reader task
+	onPickUdp(x::Vector{UInt8})
+
+process picker UDP message
+x is the message
+"""
+function onPickUdp(x::Vector{UInt8})
+	global cbFunction
+	global qwtwDebugMode
+	global qwtwServiceH
+	ii = QCBInfo()
+
+	if qwtwDebugMode
+		@printf "onPickUdp starting!\n"
+	end
+
+	try
+		time = reinterpret(Float64, x[5:12])[1]
+		iks =  reinterpret(Float64, x[13:20])[1]
+		igrek =  reinterpret(Float64, x[21:28])[1]
+		zet =  reinterpret(Float64, x[29:36])[1]
+		
+		index =  reinterpret(Int32, x[37:40])[1]
+
+		xx = reinterpret(Int32, x[41:44])[1]
+		yy =  reinterpret(Int32, x[45:48])[1]
+		plotID =  reinterpret(Int32, x[49:52])[1]
+		lineID = reinterpret(Int32, x[53:56])[1]
+		type = reinterpret(Int32, x[57:60])[1]
+		
+		# and the 'label'
+		eos = 84
+		for k= 61:84
+			if x[k] == 0
+				eos = k
+				break
+			end
+		end
+		if eos == 61
+			label = ""
+		else
+			label = String(x[61:eos-1])
+		end
+		if qwtwDebugMode
+			@printf "\t type = %d; index = %d; label = %s\n" type index label
+		end
+
+		ii = QCBInfo(type, plotID, lineID, index, xx, yy, iks, igrek, zet, time, label)
+	catch ex
+		if qwtwDebugMode
+			@printf "cannot process picker message\n "
+			bt = backtrace()
+			msg = sprint(showerror, ex, bt)
+			@printf "%s\n" msg
+		end
+	end
+
+	try
+		stest1 = ccall(qwtwServiceH, Int32, (Int32,), 1);
+		cbFunction(ii)  # call the user function
+		stest2 = ccall(qwtwServiceH, Int32, (Int32,), 2);
+	catch ex
+		@printf "onPickUdp: callback function failed\n "
+		bt = backtrace()
+		msg = sprint(showerror, ex, bt)
+		@printf "%s\n" msg
+	end
+
+	return
+end
+
+
+"""
+	onClipUdp(x::Vector{UInt8})
+
+process clip UDP message
+
+"""
+function onClipUdp(x::Vector{UInt8})
+	global clipCallbackFunction
+	global qwtwDebugMode
+	global qwtwServiceH
+	ii = QClipCallbackInfo()
+
+	if qwtwDebugMode
+		@printf "onClipUdp\n"
+	end
+
+	try
+		time1 = reinterpret(Float64, x[5:12])[1]
+		time2 = reinterpret(Float64, x[13:20])[1]
+		clipGroup = reinterpret(Int32, x[21:24])[1]
+		havePos = reinterpret(Int32, x[25:28])[1]
+
+		x1 = reinterpret(Float64, x[29:36])[1]
+		y1 = reinterpret(Float64, x[37:44])[1]
+		z1 = reinterpret(Float64, x[45:52])[1]
+		x2 = reinterpret(Float64, x[53:60])[1]
+		y2 = reinterpret(Float64, x[61:68])[1]
+		z2 = reinterpret(Float64, x[69:76])[1]
+
+		ii = QClipCallbackInfo(time1, time2, clipGroup, havePos, x1, y1, z1, x2, y2, z2)
+	catch ex
+		if qwtwDebugMode
+			@printf "onClipUdp: cannot process 'clip' message\n "
+			bt = backtrace()
+			msg = sprint(showerror, ex, bt)
+			@printf "%s\n" msg
+		end
+	end
+
+	if qwtwDebugMode
+		@printf "\ttime1 = %f, time2 = %f\n" ii.t1  ii.t2
+	end
+
+	try
+		stest1 = ccall(qwtwServiceH, Int32, (Int32,), 1);
+		clipCallbackFunction(ii) # call the user function
+		stest2 = ccall(qwtwServiceH, Int32, (Int32,), 2);
+	catch ex
+		@printf "onClipUdp: callback function failed\n "
+		bt = backtrace()
+		msg = sprint(showerror, ex, bt)
+		@printf "%s\n" msg
+	end
+
+	return
+end
+
+
+"""
+UDP reader task. this is a very simple UDP client.
 """
 function udpDataReader()
 	global udpPort
 	global pleaseStopUdp
-	global cbFunction
 	global qwtwDebugMode
 	global cbLock
 	global lastUdpPacket
@@ -114,6 +270,10 @@ function udpDataReader()
 	end
 	type = 0; plotID = 0; lineID = 0; index = 0; xx = 0; yy = 0; iks = 0.0; igrek = 0.0; zet = 0.0; time = 0.0; label = "hello";
 	ii = QCBInfo(type, plotID, lineID, index, xx, yy, iks, igrek, zet, time, label)
+
+	time1 = 0.0; time2 = 0.0
+	x1 = 0.0; y1 = 0.0; z1 = 0.0;  x2 = 0.0; y2 = 0.0; z2 = 0.0; clipGroup = 0; havePos = false;
+	clipInfo = QClipCallbackInfo(time1, time2, clipGroup, havePos, x1, y1, z1, x2, y2, z2)
 	x = zeros(UInt8, 88)
 	nx = 0; eos = 84; k = 1;
 
@@ -139,61 +299,20 @@ function udpDataReader()
 			end
 			continue
 		end
-		
-		try
-			time = reinterpret(Float64, x[5:12])[1]
-			iks =  reinterpret(Float64, x[13:20])[1]
-			igrek =  reinterpret(Float64, x[21:28])[1]
-			zet =  reinterpret(Float64, x[29:36])[1]
-			
-			index =  reinterpret(Int32, x[37:40])[1]
 
-			xx = reinterpret(Int32, x[41:44])[1]
-			yy =  reinterpret(Int32, x[45:48])[1]
-			plotID =  reinterpret(Int32, x[49:52])[1]
-			lineID = reinterpret(Int32, x[53:56])[1]
-			type = reinterpret(Int32, x[57:60])[1]
-			
-			eos = 84
-			for k= 61:84
-				if x[k] == 0
-					eos = k
-					break
-				end
-			end
-			if eos == 61
-				label = ""
-			else
-				label = String(x[61:eos-1])
-			end
-
-			ii = QCBInfo(type, plotID, lineID, index, xx, yy, iks, igrek, zet, time, label)
-
-		catch ex
-			if qwtwDebugMode
-				@printf "cannot process picker message\n "
-				bt = backtrace()
-				msg = sprint(showerror, ex, bt)
-				@printf "%s\n" msg
-			end
-			continue
-		end
 		if qwtwDebugMode
 			@printf "got %d bytes  \n" length(x) 
 			print(typeof(x))
-			@printf "\n"
+			@printf "  %s\n" x[1:4]
 			#print(x)
 		end
-		try
-			stest1 = ccall(qwtwServiceH, Int32, (Int32,), 1);
-			cbFunction(ii)
-			stest2 = ccall(qwtwServiceH, Int32, (Int32,), 2);
-		catch ex
-			@printf "callback function failed\n "
-			bt = backtrace()
-			msg = sprint(showerror, ex, bt)
-			@printf "%s\n" msg
+
+		if x[1] == 0x50 # 'P'
+			onPickUdp(x)
+		elseif x[1] ==  0x43 #  'C'
+			onClipUdp(x)
 		end
+
 		counter +=1
     end  ## this loop will never terminate
     close(sock)
@@ -369,8 +488,6 @@ function qstart(;debug = false, qwtw_test = false, libraryName = "libqwtw")::Int
 		pleaseStopUdp = false
 		#udpDataReader();
 	end
-
-
 
 	@static if Sys.iswindows() #  this part will handle OS differences
 		qwtw_libName = libraryName * ".dll"
@@ -1278,6 +1395,7 @@ end
 
 """
 	qxlabel(s::String)
+
 put a label on the horizontal axis on the bottom.
 """
 function qxlabel(s::String)
@@ -1289,10 +1407,11 @@ function qxlabel(s::String)
 
 	ccall(qwtwXlabelH, Cvoid, (Ptr{UInt8},), s);
 	return
-end;
+end
 
 """
 	qylabel(s::String)
+
 put a label on the left vertical axis
 """
 function qylabel(s::String)
@@ -1304,10 +1423,11 @@ function qylabel(s::String)
 
 	ccall(qwtwYlabelH, Cvoid, (Ptr{UInt8},), s);
 	return
-end;
+end
 
 """
 	qtitle(s::String)
+
 put a title on the current plot.
 """
 function qtitle(s::String)
@@ -1323,6 +1443,7 @@ end
 
 """
 	qStarted()
+
 does it started or not yet.
 """
 function qStarted()
@@ -1337,17 +1458,20 @@ export  qEnableCoordBroadcast, qDisableCoordBroadcast
 export qStarted
 #export qplot3d, qf3d,
 
-function qsetCallback(cb) 
-	global cbFunction
+"""
+	stopUdpThread()
+
+stops UDP thread.	
+"""
+function stopUdpThread()
 	global pleaseStopUdp
 	global udpPort
 	global cbTaskH
 	global qwtwDebugMode
 	global cbLock
-	#global qwtwServiceH
 
 	if qwtwDebugMode
-		@printf "qsetCallback: istaskdone1(cbTaskH): %d\n" istaskdone(cbTaskH)
+		@printf "stopUdpThread: istaskdone1(cbTaskH): %d\n" istaskdone(cbTaskH)
 	end
 	#if istaskstarted(cbTaskH) # stop the task
 	if islocked(cbLock)
@@ -1372,28 +1496,82 @@ function qsetCallback(cb)
 		wait(cbTaskH)
 		if qwtwDebugMode
 			@printf "finished ..\n"
-			@printf "qsetCallback: istaskdone2(cbTaskH): %d\n" istaskdone(cbTaskH)
+			@printf "stopUdpThread: istaskdone2(cbTaskH): %d\n" istaskdone(cbTaskH)
 		end
 
 		cbTaskH = @task udpDataReader();
 	else
 
 	end
+end
 
-
-	#@printf "qsetCallback  locking.. \n"
-	#lock(cbLock)
-	#@printf "qsetCallback locked ! \n"
-
-	cbFunction = cb
-
-	#unlock(cbLock)
-	#@printf "qsetCallback unlocked ! \n"
-
+function startUdpThread()
+	global pleaseStopUdp, cbTaskH
 	pleaseStopUdp = false
 	schedule(cbTaskH)
 	return
 end
+
+"""
+	qsetCallback(cb) 
+
+set up another 'picker' callback
+cb is the callback function, which will take one single parameter of type QCBInfo
+see cbtest.jl for example how to use this.
+"""
+function qsetCallback(cb) 
+	global cbFunction
+	global qwtwDebugMode
+	#global cbLock
+
+	stopUdpThread()
+
+	#@printf "qsetCallback  locking.. \n"
+	#lock(cbLock)
+	#@printf "qsetCallback locked ! \n"
+	cbFunction = cb
+	if qwtwDebugMode
+		@printf "setting up cbFunction \n"
+	end
+	#unlock(cbLock)
+	#@printf "qsetCallback unlocked ! \n"
+	startUdpThread()
+	return
+end
 export qsetCallback
+
+
+"""
+	qsetClipCallback(cb) 
+
+set up a 'clip' callback
+cb is the callback function, which will take one single parameter of type QClipCallbackInfo
+see cbtest.jl for example how to use this.
+"""
+function qsetClipCallback(cb) 
+	global clipCallbackFunction
+	global qwtwDebugMode
+
+	stopUdpThread()
+	clipCallbackFunction = cb
+	if qwtwDebugMode
+		@printf "setting up clipCallbackFunction! \n"
+	end
+	startUdpThread()
+	return
+end
+export qsetClipCallback
+
+"""
+	setDebugMode(m::Bool)
+
+for testing/defugging
+"""
+function setDebugMode(m::Bool)
+	global qwtwDebugMode
+	qwtwDebugMode = m
+	return
+end
+export setDebugMode
 
 end # module

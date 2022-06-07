@@ -286,7 +286,10 @@ qsetCallback(my_callback)
 # and see how your callback is working.
 # BTW it is called from the different Julia thread, so be careful
 
-# cbtest.jl file has bigger and more interesting callback example
+# cbtest.jl file has bigger and more interesting callback examples
+
+# also you can use a callback from 'clip' button (second from the right)
+# see cbtest.jl for additional information
 
 
 # if everything is working as you need, you can
