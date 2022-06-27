@@ -10,14 +10,15 @@ using Printf
 using Libdl
 using Sockets # for callbacks
 import JSON3  # for settings file
-import Qt_jll
-import qwtw_jll
-import marble_jll
+import Qt_jll # for paths info
+import qwtw_jll # for plotting
+import marble_jll # for paths info
 
 function __init__()
 	# this is not OK  qStart() # start in normal mode
 	global cbTaskH # callback task handler
-	cbTaskH = @task udpDataReader();
+	cbTaskH = @task udpDataReader(); # for callbacks
+	return
 end
 
 # DLLs and function handles below:
@@ -51,7 +52,7 @@ qwtMglMesh = 0
 qwtStartH = 0
 qwtStartDebugH = 0
 qwtStopH = 0
-started = false
+started = false   # should be true when we attached to the library, and library 'attached' to QT part
 
 old_path = ""
 old_qtPath = ""
@@ -64,8 +65,10 @@ cbLock = ReentrantLock()
 errrorBreak = false	# do 'error()' when parameters are not OK
 
 """
-	information for the callback function 
-	about the mouse click
+	QCBInfo
+
+information for the callback function 
+about the mouse click
 """
 struct QCBInfo
 	type::Int32		# callback type ('1' for simple mouse click.. something else in case 'external UDP message info')
@@ -89,9 +92,12 @@ export QCBInfo
 
 cbFunction  = function(info::QCBInfo) # 'picker' callback user function
 	# doing nothing by default
+	return
 end
 
 """
+	QClipCallbackInfo
+
 information about the 'clip' callback (when the user is pressing 'clip' button )
 """
 struct QClipCallbackInfo
@@ -114,15 +120,16 @@ export QClipCallbackInfo
 
 clipCallbackFunction = function(info::QClipCallbackInfo) # 'clip' callback user function
 	# doing nothing by default
+	return
 end
 
-lastUdpPacket = zeros(UInt8, 80)
+lastUdpPacket = zeros(UInt8, 80) 
 export lastUdpPacket # just for testing/debugging
 
 """
 	onPickUdp(x::Vector{UInt8})
 
-process picker UDP message
+process picker UDP message.  Called only when we get info from UDP
 x is the message
 """
 function onPickUdp(x::Vector{UInt8})
@@ -195,7 +202,6 @@ end
 	onClipUdp(x::Vector{UInt8})
 
 process clip UDP message
-
 """
 function onClipUdp(x::Vector{UInt8})
 	global clipCallbackFunction
@@ -250,6 +256,8 @@ end
 
 
 """
+	udpDataReader()
+
 UDP reader task. this is a very simple UDP client.
 """
 function udpDataReader()
@@ -258,16 +266,12 @@ function udpDataReader()
 	global qwtwDebugMode
 	global cbLock
 	global lastUdpPacket
-	global qwtwServiceH
 
-	if udpPort == 0
+	if udpPort == 0    # this should be initialized inside qstart()
 		@printf " 1 cannot start udpDataReader \n"
 		return
 	end
-	if qwtwServiceH == 0
-		@printf " 2 cannot start udpDataReader \n"
-		return
-	end
+
 	type = 0; plotID = 0; lineID = 0; index = 0; xx = 0; yy = 0; iks = 0.0; igrek = 0.0; zet = 0.0; time = 0.0; label = "hello";
 	ii = QCBInfo(type, plotID, lineID, index, xx, yy, iks, igrek, zet, time, label)
 
@@ -283,7 +287,7 @@ function udpDataReader()
 	sock=UDPSocket()
 	counter = 0
 	bind(sock, ip"127.0.0.1", udpPort)
-	lock(cbLock)
+	lock(cbLock)    # the only meaning of cbLock is that this thread is running
 	while pleaseStopUdp == false
 		#@printf "udpDataReader waiting for the data from UDP.. \n"
 		x = recv(sock)
@@ -293,7 +297,7 @@ function udpDataReader()
 			break
 		end
 		nx = length(x)
-		if nx < 80
+		if nx < 80      # too short message
 			if qwtwDebugMode
 				@printf "udpDataReader() got %d bytes" nx
 			end
@@ -326,8 +330,9 @@ end
 #cbTaskH = Task(udpDataReader)
 
 """
-function saveEnv()
-	saves some of the env vars
+	saveEnv()
+
+	saves some of the env vars to global variables
 """
 function saveEnv()
 	global old_path, old_qtPath, oldLdLibPath
@@ -338,8 +343,9 @@ function saveEnv()
 end
 
 """
-function restoreEnv()
-	restores env vars back
+	restoreEnv()
+
+restores env vars back from global variables
 """
 function restoreEnv()
 	global old_path, old_qtPath, oldLdLibPath
@@ -350,8 +356,9 @@ function restoreEnv()
 end
 
 """
-function printEnv()
-	simply print some of the env variables
+	printEnv()
+
+simply print some of the env variables
 """
 function printEnv()
 	try
@@ -369,10 +376,11 @@ function printEnv()
 end
 
 """
-function addEnvItem(item, var)
-	add something to the ENV from the beginning
-	item -  what to add
-	var - where to add
+	addEnvItem(item, var::String; debug = false)
+
+add something to the ENV from the beginning
+item -  what to add
+var - where to add
 """
 function addEnvItem(item, var::String; debug = false)
 	dv = ":"
@@ -423,29 +431,17 @@ function addEnvItem(item, var::String; debug = false)
 	end
 end
 
-#=
-function qCallback(fID, lineID, index, fx, fy, x, y, z, t, legend) :: Cvoid
-	@printf "qCallback  t = %f\n" t
-end
-
-function qcbTest1() :: Cvoid
-#	@printf "qcbTest1 \n"
-end
-
-function qcbTest2(index) :: Cvoid
-	@printf "qcbTest2  %d \n"  index
-end
-=#
-
-
-
 """
 	qstart(;debug = false, qwtw_test = false, libraryName = "libqwtw")::Int32
+
 starts the qwtw "C" library. 
 
 Without it, nothing will work. Call it before any other functions.\\
 if debug, will try to enable debug print out. A lot of info. Just for debugging.\\
 qwtw_test	-> if true, will try to not modify env variables. \\
+libraryName: if not empty, then use this a a library name instead of the library from artifact (for debugging)
+
+return 0 if success
 """
 function qstart(;debug = false, qwtw_test = false, libraryName = "libqwtw")::Int32
 	global qwtwDebugMode
@@ -677,6 +673,7 @@ end
 
 """
 	qstop()
+
 close everything and detach from qwtw library.
 
 It maybe useful for debugging. What it does actually, it sends a command to the QT process to exit.\\
@@ -749,16 +746,16 @@ function traceit( msg )
 end
 
 """
-	qfigure(n)
+	qfigure(n::Integer = 0; xAxisType=:aLinear, yAxisType=:aLinear)::Int32
 
-create a new plot window, OR make plot (with this ID `n`) 'active'.
+create a new plot window, OR make plot (with this ID 'n') 'active'.
 
-looks like `n` have to be an integer number (this plot ID, or zero if you do not care).\\
+looks like 'n' have to be an integer number (this plot ID, or zero if you do not care).\\
 after this function, this plot is the "active plot". \\
-If `n == 0` then another new plot will be created.
+If 'n == 0' then another new plot will be created.
 xAxisType and yAxisType could be :aLinear (default) or :aLog (logarithmic)
 
-Returns ID of the created plot
+Returns ID of the created plot. 
 """
 function qfigure(n::Integer = 0; xAxisType=:aLinear, yAxisType=:aLinear)::Int32
 	global qwtwFigureH, started
@@ -808,6 +805,7 @@ export qclipgrp
 	qremove(id::Int32)
 
 remove a line from a plot.
+id: ID of the line to remove
 """
 function qremove(id::Int32)
 	global qwtwRemoveLineH, started
@@ -1175,9 +1173,13 @@ function qplot1(x::Vector{Float64}, y::Vector{Float64}, name::String, style::Str
 end
 
 """
-qchange(id::Int32, x::Vector{Float64}, y::Vector{Float64}, t::Vector{Float64} = []) :: Int32
+	qchange(id::Int32, x::Vector{Float64}, y::Vector{Float64}, t::Vector{Float64} = []) :: Int32
 
 change existing line.
+id: ID of the line to change
+x : new X vectors
+y: new Y vectors
+t : (optional) new 'time' vector
 """
 function qchange(id::Int32, x::Vector{Float64}, y::Vector{Float64}, t::Vector{Float64} = Vector{Float64}([])) :: Int32
 	global qwtwChangeLineH, started
@@ -1189,7 +1191,6 @@ function qchange(id::Int32, x::Vector{Float64}, y::Vector{Float64}, t::Vector{Fl
 	n = length(x)
 	n1 = length(y)
 	n2 = length(t)
-
 
 	if (n < 1) || (n != n1)
 		mm = @sprintf "QWTWPlot qchange: bad input array length (x:%d; y:%d)\n" n n1
@@ -1446,7 +1447,7 @@ end
 
 does it started or not yet.
 """
-function qStarted()
+function qStarted() :: Bool
 	global started
 	return started
 end
@@ -1505,6 +1506,11 @@ function stopUdpThread()
 	end
 end
 
+"""
+	startUdpThread()
+
+start UDP thread	
+"""
 function startUdpThread()
 	global pleaseStopUdp, cbTaskH
 	pleaseStopUdp = false
