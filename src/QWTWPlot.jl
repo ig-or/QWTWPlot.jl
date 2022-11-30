@@ -185,7 +185,7 @@ function onPickUdp(x::Vector{UInt8})
 
 	try
 		stest1 = ccall(qwtwServiceH, Int32, (Int32,), 1);
-		cbFunction(ii)  # call the user function
+		Base.invokelatest(cbFunction, ii)  # call the user function
 		stest2 = ccall(qwtwServiceH, Int32, (Int32,), 2);
 	catch ex
 		@printf "onPickUdp: callback function failed\n "
@@ -242,7 +242,7 @@ function onClipUdp(x::Vector{UInt8})
 
 	try
 		stest1 = ccall(qwtwServiceH, Int32, (Int32,), 1);
-		clipCallbackFunction(ii) # call the user function
+		Base.invokelatest(clipCallbackFunction, ii) # call the user function
 		stest2 = ccall(qwtwServiceH, Int32, (Int32,), 2);
 	catch ex
 		@printf "onClipUdp: callback function failed\n "
@@ -503,9 +503,9 @@ function qstart(;debug = false, qwtw_test = false, libraryName = "libqwtw")::Int
 		@printf "qwtw test; loading %s .. \n" qwtw_libName
 		@printf "\nPATH = %s\n\n" ENV["PATH"]
 	else
+		addEnvItem(qwtw_jll.PATH, "PATH", debug = debug)
 		@static if Sys.iswindows() 
 			ENV["QT_PLUGIN_PATH"]=Qt_jll.artifact_dir * "\\plugins"	
-			addEnvItem(qwtw_jll.PATH, "PATH", debug = debug)
 			addEnvItem(qwtw_jll.LIBPATH, "PATH", debug = debug)
 			
 			#ENV["PATH"]= boost_jll.artifact_dir * "\\bin;" *  ENV["PATH"] 
@@ -516,7 +516,6 @@ function qstart(;debug = false, qwtw_test = false, libraryName = "libqwtw")::Int
 			#new_env["PATH"]= FreeType2_jll.artifact_dir * "\\bin;" *  ENV["PATH"] 
 		else
 			ENV["QT_PLUGIN_PATH"]=string(Qt_jll.artifact_dir) * "/plugins"	
-			addEnvItem(qwtw_jll.PATH, "PATH", debug = debug)	
 			addEnvItem(qwtw_jll.LIBPATH, "LD_LIBRARY_PATH", debug = debug)	
 
 			#ENV["PATH"]= boost_jll.artifact_dir * "/bin;" *  ENV["PATH"] 
