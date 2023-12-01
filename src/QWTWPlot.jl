@@ -18,6 +18,7 @@ function __init__()
 	# this is not OK  qStart() # start in normal mode
 	global cbTaskH # callback task handler
 	cbTaskH = @task udpDataReader(); # for callbacks
+	cbTaskH.sticky = false
 	return
 end
 
@@ -59,6 +60,7 @@ old_qtPath = ""
 oldLdLibPath = ""
 
 udpPort = 0 	# UDP port number
+smip = "239.255.0.1"
 cfg = Dict()	# settings info
 pleaseStopUdp = false
 cbLock = ReentrantLock()
@@ -266,11 +268,13 @@ function udpDataReader()
 	global qwtwDebugMode
 	global cbLock
 	global lastUdpPacket
+	global smip
 
 	if udpPort == 0    # this should be initialized inside qstart()
-		@printf " 1 cannot start udpDataReader \n"
+		@warn " 1 cannot start udpDataReader \n"
 		return
 	end
+
 
 	type = 0; plotID = 0; lineID = 0; index = 0; xx = 0; yy = 0; iks = 0.0; igrek = 0.0; zet = 0.0; time = 0.0; label = "hello";
 	ii = QCBInfo(type, plotID, lineID, index, xx, yy, iks, igrek, zet, time, label)
@@ -282,11 +286,18 @@ function udpDataReader()
 	nx = 0; eos = 84; k = 1;
 
 	if qwtwDebugMode
-		@printf "starting udp data reader on port %d\n" udpPort
+		@info "starting udp data reader on port $udpPort; smip = $smip"
 	end
+	group = IPv4(smip)
 	sock=UDPSocket()
 	counter = 0
-	bind(sock, ip"127.0.0.1", udpPort)
+	test = bind(sock, ip"0.0.0.0", udpPort,  reuseaddr=true)
+	if !test
+		if qwtwDebugMode
+			@info "udpDataReader() bind failed"
+		end
+	end
+	join_multicast_group(sock, group)
 	lock(cbLock)    # the only meaning of cbLock is that this thread is running
 	while pleaseStopUdp == false
 		#@printf "udpDataReader waiting for the data from UDP.. \n"
@@ -299,7 +310,7 @@ function udpDataReader()
 		nx = length(x)
 		if nx < 80      # too short message
 			if qwtwDebugMode
-				@printf "udpDataReader() got %d bytes" nx
+				@printf "\t QWTWPlot udpDataReader() got %d bytes" nx
 			end
 			continue
 		end
@@ -318,12 +329,13 @@ function udpDataReader()
 		end
 
 		counter +=1
-    end  ## this loop will never terminate
+    end 
+	leave_multicast_group(sock, group)
     close(sock)
 	unlock(cbLock)
 
 	if qwtwDebugMode
-		@printf "stopping udp data reader on port %d\n" udpPort
+		@info "stopping udp data reader on port $udpPort"
 	end
 end
 
@@ -462,7 +474,7 @@ function qstart(;debug = false, qwtw_test = false, libraryName = "libqwtw")::Int
 	global old_path, old_qtPath, oldLdLibPath
 	global qwtMglH, qwtMglLine, qwtMglMesh
 	#global qwtSetCBH
-	global udpPort
+	global udpPort, smip
 	global cfg
 	global pleaseStopUdp
 
@@ -476,6 +488,7 @@ function qstart(;debug = false, qwtw_test = false, libraryName = "libqwtw")::Int
 		settings = read(settingsFileName)
 		cfg = JSON3.read(String(settings))
 		udpPort = parse(Int32, cfg["udp_client_port"])
+		smip = cfg["smip"]
 	catch
 		udpPort = 0
 		@printf "error while reading settings file %s\n" settingsFileName
@@ -1475,13 +1488,17 @@ function stopUdpThread()
 	end
 	#if istaskstarted(cbTaskH) # stop the task
 	if islocked(cbLock)
+		@assert istaskstarted(cbTaskH)
 		if qwtwDebugMode
 			@printf "stopping the task..\n"
 		end
 		pleaseStopUdp = true
+		group = IPv4(smip)
 		sock=UDPSocket()
+		#Sockets.setopt(sock, enable_broadcast=true)
+
 		for i = 1:25
-			send(sock, ip"127.0.0.1", udpPort, "stop\n")
+			send(sock, group, udpPort, "stop\n")
 		end
 
 		if qwtwDebugMode
@@ -1516,6 +1533,7 @@ function startUdpThread()
 	schedule(cbTaskH)
 	return
 end
+export startUdpThread, stopUdpThread
 
 """
 	qsetCallback(cb) 

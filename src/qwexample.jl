@@ -171,6 +171,7 @@ y1 = similar(t)
 @. y = cos(t) * R1 + cos(t * 9.) * R2 + cos(t * 21.) * R3 + rand() * R3*0.25
 @. x1 = sin(t) * R1 + sin(t * 11.) * R2 + sin(t * 31.) * R3 + randn() * R3*0.015
 @. y1 = cos(t) * R1 + cos(t * 8.) * R2 + cos(t * 23.) * R3 + randn() * R3*0.015
+
 qfigure()
 qplot2(x, y, t, "$N test 1", " tb", 1, 5)
 qplot2(x1, y1, t, "$N test 2", " eg", 1, 3)
