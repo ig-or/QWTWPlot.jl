@@ -25,6 +25,8 @@ end
 # DLLs and function handles below:
 qwtwLibHandle = 0
 qwtwFigureH = 0
+qwtwSpectrogramTestH = 0
+qwtwSetSpectrogramInfoH = 0
 qwtwServiceH = 0
 qwtwClipGroupH = 0
 qwtwRemoveLineH = 0
@@ -466,7 +468,7 @@ function qstart(;debug = false, qwtw_test = false, libraryName = "libqwtw")::Int
 	# this could be still useful:
 	#if debug qwtw_libName *= "d"; end
 
-	global qwtwLibHandle, qwtwFigureH, qwtwMapViewH,  qwtwsetimpstatusH, qwtwCLearH, qwtwPlotH, qwtwServiceH
+	global qwtwLibHandle, qwtwFigureH, qwtwSpectrogramTestH, qwtwSetSpectrogramInfoH, qwtwMapViewH,  qwtwsetimpstatusH, qwtwCLearH, qwtwPlotH, qwtwServiceH
 	global qwtwPlot2H, qwtwXlabelH, qwtwYlabelH, qwywTitleH, qwtwVersionH, qwtwMWShowH, qwtwRemoveLineH
 	global qwtEnableBroadcastH, qwtDisableBroadcastH, qwtwChangeLineH, qwtwClipGroupH
 	#global qwtwPlot3DH, qwtwFigure3DH
@@ -489,9 +491,9 @@ function qstart(;debug = false, qwtw_test = false, libraryName = "libqwtw")::Int
 		cfg = JSON3.read(String(settings))
 		udpPort = parse(Int32, cfg["udp_client_port"])
 		smip = cfg["smip"]
-	catch
+	catch ex
 		udpPort = 0
-		@printf "error while reading settings file %s\n" settingsFileName
+		@warn "error while reading settings file $settingsFileName ($ex)  "
 	end
 	if udpPort != 0
 		pleaseStopUdp = false
@@ -570,6 +572,8 @@ function qstart(;debug = false, qwtw_test = false, libraryName = "libqwtw")::Int
 		@printf "\nlibrary %s opened from %s \n" qwtw_libName  Libdl.dlpath(qwtwLibHandle)
 	end
 	qwtwFigureH = Libdl.dlsym(qwtwLibHandle, "qwtfigure")
+	qwtwSpectrogramTestH = Libdl.dlsym(qwtwLibHandle, "qwtspectrogram")
+	qwtwSetSpectrogramInfoH = Libdl.dlsym(qwtwLibHandle, "spectrogram_info")
 	#qwtwFigure3DH = Libdl.dlsym(qwtwLibHandle, "qwtfigure3d")
 
 	try
@@ -785,6 +789,43 @@ function qfigure(n::Integer = 0; xAxisType=:aLinear, yAxisType=:aLinear)::Int32
 	test = ccall(qwtwFigureH, Int32, (Int32, UInt32), n, flags);
 	return test
 end;
+
+
+
+function qspectrogram(n::Integer = 0; xAxisType=:aLinear, yAxisType=:aLinear)::Int32
+	global qwtwSpectrogramTestH, started
+	if !started
+		@printf "not started (was qstart() called?)\n"
+		return 0
+	end
+	flags::UInt32 = 0
+	if xAxisType == :aLog
+		flags |= 1
+	end
+	if yAxisType == :aLog
+		flags |= 2
+	end
+	test = ccall(qwtwSpectrogramTestH, Int32, (Int32, UInt32), n, flags);
+	return test
+end
+export qspectrogram
+
+qwtwSetSpectrogramInfoH
+function qspectrogram_info(xmin::Float64, xmax::Float64, ymin::Float64, ymax::Float64, z::Matrix{Float64})::Int32
+	global qwtwSetSpectrogramInfoH, started
+	if !started
+		@printf "not started (was qstart() called?)\n"
+		return 0
+	end
+	nx, ny = size(z)
+
+	test = ccall(qwtwSetSpectrogramInfoH, Int32, (Int32, Int32, Float64, Float64, Float64, Float64, Ptr{Float64}), 
+		nx, ny, xmin, xmax, ymin, ymax, z);
+	return test
+end
+export qspectrogram_info
+
+
 
 
 """
