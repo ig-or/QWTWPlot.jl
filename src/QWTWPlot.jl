@@ -1,7 +1,8 @@
-#
-# QWTwPlot module
-# qwt - based 2D plotting
-#
+"""
+QWTwPlot package   
+qwt - based 2D/3D plotting   
+   
+"""
 
 #__precompile__(true)
 module QWTWPlot
@@ -27,6 +28,7 @@ qwtwLibHandle = 0
 qwtwFigureH = 0
 qwtwSpectrogramTestH = 0
 qwtwSetSpectrogramInfoH = 0
+qwtwSetSpectrogramInfoH2 = 0
 qwtwServiceH = 0
 qwtwClipGroupH = 0
 qwtwRemoveLineH = 0
@@ -468,7 +470,8 @@ function qstart(;debug = false, qwtw_test = false, libraryName = "libqwtw")::Int
 	# this could be still useful:
 	#if debug qwtw_libName *= "d"; end
 
-	global qwtwLibHandle, qwtwFigureH, qwtwSpectrogramTestH, qwtwSetSpectrogramInfoH, qwtwMapViewH,  qwtwsetimpstatusH, qwtwCLearH, qwtwPlotH, qwtwServiceH
+	global qwtwLibHandle, qwtwFigureH, qwtwSpectrogramTestH, qwtwSetSpectrogramInfoH, qwtwSetSpectrogramInfoH2
+	global qwtwMapViewH,  qwtwsetimpstatusH, qwtwCLearH, qwtwPlotH, qwtwServiceH
 	global qwtwPlot2H, qwtwXlabelH, qwtwYlabelH, qwywTitleH, qwtwVersionH, qwtwMWShowH, qwtwRemoveLineH
 	global qwtEnableBroadcastH, qwtDisableBroadcastH, qwtwChangeLineH, qwtwClipGroupH
 	#global qwtwPlot3DH, qwtwFigure3DH
@@ -564,7 +567,7 @@ function qstart(;debug = false, qwtw_test = false, libraryName = "libqwtw")::Int
 			printEnv();
 		end
 		restoreEnv()
-		@printf "Sorry, dlopen for %s failed; something is wrong\n" qwtw_libName
+		@info "Sorry, dlopen for $qwtw_libName failed; something is wrong ($ex)\n"
 		throw(ex)
 	end
 
@@ -572,8 +575,16 @@ function qstart(;debug = false, qwtw_test = false, libraryName = "libqwtw")::Int
 		@printf "\nlibrary %s opened from %s \n" qwtw_libName  Libdl.dlpath(qwtwLibHandle)
 	end
 	qwtwFigureH = Libdl.dlsym(qwtwLibHandle, "qwtfigure")
-	qwtwSpectrogramTestH = Libdl.dlsym(qwtwLibHandle, "qwtspectrogram")
-	qwtwSetSpectrogramInfoH = Libdl.dlsym(qwtwLibHandle, "spectrogram_info")
+	try
+		qwtwSpectrogramTestH = Libdl.dlsym(qwtwLibHandle, "qwtspectrogram")
+		qwtwSetSpectrogramInfoH = Libdl.dlsym(qwtwLibHandle, "spectrogram_info")
+		qwtwSetSpectrogramInfoH2 = Libdl.dlsym(qwtwLibHandle, "spectrogram_info2")
+	catch ex
+		@info "looks like spectrograms not implemented by qwtw; $ex"
+		qwtwSpectrogramTestH = 0
+		qwtwSetSpectrogramInfoH = 0
+		qwtwSetSpectrogramInfoH2 = 0
+	end
 	#qwtwFigure3DH = Libdl.dlsym(qwtwLibHandle, "qwtfigure3d")
 
 	try
@@ -810,21 +821,53 @@ function qspectrogram(n::Integer = 0; xAxisType=:aLinear, yAxisType=:aLinear)::I
 end
 export qspectrogram
 
-qwtwSetSpectrogramInfoH
-function qspectrogram_info(xmin::Float64, xmax::Float64, ymin::Float64, ymax::Float64, z::Matrix{Float64})::Int32
-	global qwtwSetSpectrogramInfoH, started
+"""
+	qspectrogram_info(ymin::Float64, ymax::Float64, xmin::Float64, xmax::Float64, z::Matrix{Float64}; p::AbstractArray{Float64, 3} = zeros(1, 1, 1), t::Matrix{Float64} = [0.0 0.0])::Int32
+  
+parameters:  		
+* xmin minimum x coord
+* xmax maximum x coord
+* ymin minimum y coord
+* ymax maximum y coord
+* z a spectrogramm info. [ny x nx] matrix
+* p a 3D array of points associated with every pixel  [3 x ny x nx] Float64  array
+* tt a parameter (timestamp?) value, assiciated with every pixel [ny x nx] Float64 matrix
+"""
+function qspectrogram_info(ymin::Float64, ymax::Float64, xmin::Float64, xmax::Float64, z::Matrix{Float64};
+			p::AbstractArray{Float64, 3} = zeros(1, 1, 1), t::Matrix{Float64} = [0.0 0.0])::Int32
+	global qwtwSetSpectrogramInfoH2, started
 	if !started
-		@printf "not started (was qstart() called?)\n"
+		@info "not started (was qstart() called?)\n"
 		return 0
 	end
-	nx, ny = size(z)
+	ny, nx = size(z)
 
-	test = ccall(qwtwSetSpectrogramInfoH, Int32, (Int32, Int32, Float64, Float64, Float64, Float64, Ptr{Float64}), 
-		nx, ny, xmin, xmax, ymin, ymax, z);
+	pp = C_NULL
+	tt = C_NULL
+
+	if length(t) > 2   # try to use this parameter
+		nty, ntx = size(t)
+		if ntx != nx || nty != ny
+			@warn "qspectrogram_info: wrong t size ([$nty, $ntx]); it should be ([$ny, $nx])"
+			return 1
+		end
+		tt = copy(t')    # do the transpose !!!!
+	end
+	if length(p) > 1
+		n1, n2, n3 = size(p)
+		if n1 != 3 || n2 != ny || n3 != nx
+			@warn "qspectrogram_info: wrong p size ([$n1, $n2, $n3], it should be ([3, $ny, $nx]))"
+			return 2
+		end
+		pp = copy(p')  # do the transpose !!!!
+	end
+	zz = copy(z')
+
+	test = ccall(qwtwSetSpectrogramInfoH2, Int32, (Int32, Int32, Float64, Float64, Float64, Float64, Ptr{Float64}, Ptr{Float64}, Ptr{Float64}), 
+		ny, nx, ymin, ymax, xmin, xmax, zz, pp, tt);
 	return test
 end
 export qspectrogram_info
-
 
 
 
@@ -1559,7 +1602,7 @@ function stopUdpThread()
 
 		cbTaskH = @task udpDataReader();
 	else
-
+		@assert !istaskstarted(cbTaskH)
 	end
 end
 
@@ -1571,6 +1614,7 @@ start UDP thread
 function startUdpThread()
 	global pleaseStopUdp, cbTaskH
 	pleaseStopUdp = false
+	@assert !istaskstarted(cbTaskH)
 	schedule(cbTaskH)
 	return
 end

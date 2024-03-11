@@ -297,6 +297,8 @@ qsetCallback(my_callback)
 # close all the plots with following command:
 #qclear()
 
+# see spectrogram_test.jl for some info about how to use spectrogramm functions
+
 # if you need bugs to be fixed, or add some features, do not hesitate to fix them %)
 # and create a pull request
 # and/or create an issue on github - maybe it'll be
