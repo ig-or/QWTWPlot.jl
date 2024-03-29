@@ -859,7 +859,8 @@ function qspectrogram_info(ymin::Float64, ymax::Float64, xmin::Float64, xmax::Fl
 			@warn "qspectrogram_info: wrong p size ([$n1, $n2, $n3], it should be ([3, $ny, $nx]))"
 			return 2
 		end
-		pp = copy(p')  # do the transpose !!!!
+		perm = (1, 3, 2);
+		pp = copy(permutedims(p, perm))  # do the transpose !!!!
 	end
 	zz = copy(z')
 
