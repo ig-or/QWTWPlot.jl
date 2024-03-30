@@ -64,7 +64,7 @@ old_qtPath = ""
 oldLdLibPath = ""
 
 udpPort = 0 	# UDP port number
-smip = "239.255.0.1"
+smip = ""
 cfg = Dict()	# settings info
 pleaseStopUdp = false
 cbLock = ReentrantLock()
@@ -484,20 +484,47 @@ function qstart(;debug = false, qwtw_test = false, libraryName = "libqwtw")::Int
 	global pleaseStopUdp
 
 	if started
-		@printf "qwtw already started\n"
+		if debug
+			@printf "qwtw already started\n"
+		end
 		return 0
 	end
 
 	settingsFileName = joinpath(homedir(), ".qwtw", "settings.json")
-	try
-		settings = read(settingsFileName)
-		cfg = JSON3.read(String(settings))
-		udpPort = parse(Int32, cfg["udp_client_port"])
-		smip = cfg["smip"]
-	catch ex
-		udpPort = 0
-		@warn "error while reading settings file $settingsFileName ($ex)  "
+	if isfile(settingsFileName) 
+		try
+			settings = read(settingsFileName)
+			cfg = JSON3.read(String(settings))
+			udpPort = parse(Int32, cfg["udp_client_port"])
+			smip = cfg["smip"]
+			if debug
+				@info "got info; udpPort = $udpPort; smip= $smip from file $settingsFileName "
+			end
+		catch ex
+			udpPort = 0
+			if debug
+				@warn "error while reading settings file $settingsFileName ($ex)  "
+			end
+		end
+	else	
+		if debug
+			@warn "cannot locate file $settingsFileName"
+		end
 	end
+
+	if udpPort == 0
+		udpPort = 49561
+		if debug
+			@info "setting udpPort as $udpPort"
+		end
+	end
+	if isempty(smip)
+		smip = "239.255.0.1"
+		if debug 
+			@info "setting smip as $smip"
+		end
+	end
+
 	if udpPort != 0
 		pleaseStopUdp = false
 		#udpDataReader();

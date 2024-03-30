@@ -7,7 +7,7 @@ using Random # just for data generation
 using Printf
 
 qstart() # sorry, have to call this explicity here, not in __init__
-#qstart(debug=true, qwtw_test = true, libraryName = "qwtw")
+#qstart(debug=true, qwtw_test = true, libraryName = raw"qwtw")
 
 # draw thin blue 'sinus':
 tMax = 10.0 # let it be `maximum time`
