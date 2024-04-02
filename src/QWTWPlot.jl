@@ -1,7 +1,6 @@
 """
 QWTwPlot package   
-qwt - based 2D/3D plotting   
-   
+QWT - based 2D/3D plotting   
 """
 
 #__precompile__(true)
