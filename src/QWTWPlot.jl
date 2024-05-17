@@ -44,6 +44,7 @@ qwtwXlabelH = 0
 qwtwYlabelH = 0
 qwywTitleH = 0
 qwtwVersionH = 0
+qwtSavePng = 0
 qwtwMWShowH = 0
 qwtEnableBroadcastH = 0
 qwtDisableBroadcastH = 0
@@ -471,7 +472,7 @@ function qstart(;debug = false, qwtw_test = false, libraryName = "libqwtw")::Int
 
 	global qwtwLibHandle, qwtwFigureH, qwtwSpectrogramTestH, qwtwSetSpectrogramInfoH, qwtwSetSpectrogramInfoH2
 	global qwtwMapViewH,  qwtwsetimpstatusH, qwtwCLearH, qwtwPlotH, qwtwServiceH
-	global qwtwPlot2H, qwtwXlabelH, qwtwYlabelH, qwywTitleH, qwtwVersionH, qwtwMWShowH, qwtwRemoveLineH
+	global qwtwPlot2H, qwtwXlabelH, qwtwYlabelH, qwywTitleH, qwtwVersionH, qwtwMWShowH, qwtwRemoveLineH, qwtSavePng 
 	global qwtEnableBroadcastH, qwtDisableBroadcastH, qwtwChangeLineH, qwtwClipGroupH
 	#global qwtwPlot3DH, qwtwFigure3DH
 	global qwtStartH, qwtStopH, started
@@ -637,6 +638,7 @@ function qstart(;debug = false, qwtw_test = false, libraryName = "libqwtw")::Int
 	qwtwChangeLineH = Libdl.dlsym(qwtwLibHandle, "qwtchange")
 
 	qwtwServiceH = Libdl.dlsym(qwtwLibHandle, "qwtservice")
+	qwtSavePng  = Libdl.dlsym(qwtwLibHandle, "qwtsave_png")
 
 	try
 		qwtwClipGroupH = Libdl.dlsym(qwtwLibHandle, "qwtclipgroup")
@@ -1133,6 +1135,26 @@ function qclear()
 	ccall(qwtwCLearH, Cvoid, ());
 	return
 end
+
+"""
+	qsavepng(fileName::String, plotId::Integer = 0) 
+
+"""
+function qsavepng(fileName::String, plotId::Integer = 0) 
+	global qwtSavePng, qwtwLibHandle, started
+	global qwtwDebugMode
+	if (qwtwLibHandle == 0) || (!started)
+		@printf "not started (was qstart() called?)\n"
+		return 150
+	end
+
+	result = ccall(qwtSavePng, Int32, (Int32, Ptr{UInt8},), plotId, fileName);
+	if qwtwDebugMode
+		@info "QWTWPlot::qsavepng(): result = $result"
+	end
+	return result
+end
+export qsavepng
 #=
 function qsetcallback(cb)
 	global qwtSetCBH, qwtwLibHandle, started
