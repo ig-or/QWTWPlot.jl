@@ -48,6 +48,7 @@ qwtSavePng = 0
 qwtwMWShowH = 0
 qwtEnableBroadcastH = 0
 qwtDisableBroadcastH = 0
+qwtSetPosH = 0
 
 qwtMglH = 0
 qwtMglLine = 0
@@ -448,18 +449,18 @@ function addEnvItem(item, var::String; debug = false)
 end
 
 """
-	qstart(;debug = false, qwtw_test = false, libraryName = "libqwtw")::Int32
+	qstart(;debug = false, qwtw_test = false, libraryName = "libqwtw", marblePluginPath = "")::Int32
 
-starts the qwtw "C" library. 
+starts the qwtw "C" library.   Without it, nothing will work. Call it before any other functions.  
 
-Without it, nothing will work. Call it before any other functions.\\
-if debug, will try to enable debug print out. A lot of info. Just for debugging.\\
-qwtw_test	-> if true, will try to not modify env variables. \\
-libraryName: if not empty, then use this a a library name instead of the library from artifact (for debugging)
+* if debug, will try to enable debug print out. A lot of info. Just for debugging.  
+* qwtw_test	-> if true, will try to not modify env variables.   
+* libraryName: if not empty, then use this a a library name instead of the library from artifact (for debugging)  
+* marblePluginPath alternative location for 'Marble plugins'. In case you have your own build of the Marble library (used for drawing a map). 
 
 return 0 if success
 """
-function qstart(;debug = false, qwtw_test = false, libraryName = "libqwtw")::Int32
+function qstart(;debug = false, qwtw_test = false, libraryName = "libqwtw", marblePluginPath = "")::Int32
 	global qwtwDebugMode
 	qwtwDebugMode = debug
 	qwtw_libName = "nolib"
@@ -473,7 +474,7 @@ function qstart(;debug = false, qwtw_test = false, libraryName = "libqwtw")::Int
 	global qwtwLibHandle, qwtwFigureH, qwtwSpectrogramTestH, qwtwSetSpectrogramInfoH, qwtwSetSpectrogramInfoH2
 	global qwtwMapViewH,  qwtwsetimpstatusH, qwtwCLearH, qwtwPlotH, qwtwServiceH
 	global qwtwPlot2H, qwtwXlabelH, qwtwYlabelH, qwywTitleH, qwtwVersionH, qwtwMWShowH, qwtwRemoveLineH, qwtSavePng 
-	global qwtEnableBroadcastH, qwtDisableBroadcastH, qwtwChangeLineH, qwtwClipGroupH
+	global qwtEnableBroadcastH, qwtDisableBroadcastH, qwtwChangeLineH, qwtwClipGroupH, qwtSetPosH
 	#global qwtwPlot3DH, qwtwFigure3DH
 	global qwtStartH, qwtStopH, started
 	global old_path, old_qtPath, oldLdLibPath
@@ -542,11 +543,23 @@ function qstart(;debug = false, qwtw_test = false, libraryName = "libqwtw")::Int
 	saveEnv()
 
 	marbleDataPath = joinpath(marble_jll.artifact_dir, "data")
-	marblePluginPath = joinpath(marble_jll.artifact_dir, "plugins")
+	if isempty(marblePluginPath)
+		marblePluginPath = joinpath(marble_jll.artifact_dir, "plugins")
+		if debug 
+			@info "usign standard location for Marble plugins (from marble_jll): $marblePluginPath"
+		end
+	else
+		if debug 
+			@info "usign altenative location for Marble plugins: $marblePluginPath"
+		end
+	end
 
-	if qwtw_test
+	if debug
 		@printf "qwtw test; loading %s .. \n" qwtw_libName
 		@printf "\nPATH = %s\n\n" ENV["PATH"]
+	end
+	if qwtw_test	# do nothing
+		
 	else
 		addEnvItem(qwtw_jll.PATH, "PATH", debug = debug)
 		@static if Sys.iswindows() 
@@ -639,6 +652,7 @@ function qstart(;debug = false, qwtw_test = false, libraryName = "libqwtw")::Int
 
 	qwtwServiceH = Libdl.dlsym(qwtwLibHandle, "qwtservice")
 	qwtSavePng  = Libdl.dlsym(qwtwLibHandle, "qwtsave_png")
+	qwtSetPosH = Libdl.dlsym(qwtwLibHandle, "qwtsetpos")
 
 	try
 		qwtwClipGroupH = Libdl.dlsym(qwtwLibHandle, "qwtclipgroup")
@@ -1155,6 +1169,29 @@ function qsavepng(fileName::String, plotId::Integer = 0)
 	return result
 end
 export qsavepng
+
+"""
+
+"""
+function qsetpos(plotID::Integer, set::Bool = false, x = 0, y = 0, w = 0, h = 0)
+	global qwtSetPosH, qwtwLibHandle, started
+	if (qwtwLibHandle == 0) || (!started) || (qwtSetPosH == 0)
+		@printf "qsetpos(); qwtw not started (was qstart() called?)\n"
+		return 150
+	end
+	xx = Ref{Cint}(x)
+	yy = Ref{Cint}(y)
+	ww = Ref{Cint}(w)
+	hh = Ref{Cint}(h)
+
+	s = set ? 1 : 0
+
+	result = ccall(qwtSetPosH, Int32, (Int32, Ptr{Int32},  Ptr{Int32},  Ptr{Int32},  Ptr{Int32}, Int32),  plotID, xx, yy, ww, hh, s)
+
+	return result, xx[], yy[], ww[], hh[]
+end
+export qsetpos
+
 #=
 function qsetcallback(cb)
 	global qwtSetCBH, qwtwLibHandle, started

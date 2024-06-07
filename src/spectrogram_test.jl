@@ -62,7 +62,7 @@ size(t)
 
 
 # start the library
-qstart(debug = false, qwtw_test = true, libraryName = raw"C:\Users\ISandler\space\qwtw\lib_win32_build\release\qwtwd") 
+qstart(debug = false, qwtw_test = true, libraryName = raw"C:\Users\ISandler\space\qwtw\lib_win32_build\release\qwtw") 
 #qstop()
 
 # draw the spectrogramm
@@ -99,4 +99,8 @@ qtitle("trajectory")
 qsmw()
 
 qstop() # unload the library (its working!!)
+
+qspectrogram()
+#result = qspectrogram_info(ymin, ymax, xmin, xmax, z, t = t)
+result = qspectrogram_info(ymin, ymax, xmin, xmax, z, p = p, t = t)
 
