@@ -546,11 +546,11 @@ function qstart(;debug = false, qwtw_test = false, libraryName = "libqwtw", marb
 	if isempty(marblePluginPath)
 		marblePluginPath = joinpath(marble_jll.artifact_dir, "plugins")
 		if debug 
-			@info "usign standard location for Marble plugins (from marble_jll): $marblePluginPath"
+			@info "using standard location for Marble plugins (from marble_jll): $marblePluginPath"
 		end
 	else
 		if debug 
-			@info "usign altenative location for Marble plugins: $marblePluginPath"
+			@info "using altenative location for Marble plugins: $marblePluginPath"
 		end
 	end
 
@@ -652,7 +652,11 @@ function qstart(;debug = false, qwtw_test = false, libraryName = "libqwtw", marb
 
 	qwtwServiceH = Libdl.dlsym(qwtwLibHandle, "qwtservice")
 	qwtSavePng  = Libdl.dlsym(qwtwLibHandle, "qwtsave_png")
-	qwtSetPosH = Libdl.dlsym(qwtwLibHandle, "qwtsetpos")
+	try
+		qwtSetPosH = Libdl.dlsym(qwtwLibHandle, "qwtsetpos")
+	catch ex
+		@info "cannot load qwtsetpos():   $ex"
+	end
 
 	try
 		qwtwClipGroupH = Libdl.dlsym(qwtwLibHandle, "qwtclipgroup")
