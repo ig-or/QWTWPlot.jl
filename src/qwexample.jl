@@ -14,8 +14,9 @@ tMax = 10.0 # let it be `maximum time`
 t = Array(range(0.0,stop=tMax, length=10000)); # our `time info`
 n = length(t);
 y = sin.(t);     # we will draw this signal
-qfigure(1); # "1" the number of the first plot window;
+fn1 = qfigure(1); # "1" the number of the first plot window;
 # actually we can skip this number, if just creating new plot window (like qfigure() )
+# sometimes its useful to remember the plot ID in a variable (here fn1)
 
  # parameters: 'x' and 'y' data vectors, 
  # then 'name of this line', 
@@ -67,7 +68,7 @@ qtitle("frequency test")
 # add another line to the first plot:
 t1 = Array(range(0.,stop = 10., length=5))
 y1 = cos.(t1 * 0.5)
-qfigure(1); # switch back to the first plot
+qfigure(fn1); # switch back to the first plot
 
 # if we do not need the lines, only symbols:
 qplot1(t1, y1, "points and line #1", " eb",  8)
@@ -94,6 +95,16 @@ qplot(t1, y1, "points and line #2", "-tm", 2, 10)
 	Next, select some region on one of the plots using ZOOM tool;  and press right "clip" button.
 	All the plots will (try to) zoom to the same region.
 =#
+
+
+# save the plot as png image:
+result = qsavepng(joinpath(homedir(), "tmp", "test1.png"), fn1)
+
+# Get the plot pos and dimension:
+result, xx, yy, ww, hh = qsetpos(fn1)
+
+# increase the width and move the plot window:
+result, xx, yy, ww, hh = qsetpos(fn1, true, xx >> 1, yy >> 1, ww * 2, hh)
 
 # create a circle on another plot window:
 x = sin.(t .* (2.0*pi/tMax)); y = cos.(t .* (2.0*pi/tMax));

@@ -1157,6 +1157,12 @@ end
 """
 	qsavepng(fileName::String, plotId::Integer = 0) 
 
+save a plot in a png file.   
+params:  
+* fileName  where to save the file
+* plotID   ID of the plot (return parameter from qfigure)
+
+BTW if it failed because of some permission issues, then function might return zero as in case everything is OK.
 """
 function qsavepng(fileName::String, plotId::Integer = 0) 
 	global qwtSavePng, qwtwLibHandle, started
@@ -1175,6 +1181,19 @@ end
 export qsavepng
 
 """
+	qsetpos(plotID::Integer, set::Bool = false, x = 0, y = 0, w = 0, h = 0)
+
+get/set window coords and size.  
+params:  
+* plotID is the plot ID (retuen parameter from qfigure)	
+* set if true, then new prameters will be used and window position will be changed
+* x left pos
+* y top pos 
+* w width
+* h height  
+  
+return:  
+result, xx, yy, ww, hh = operation result, left, top, width, height  
 
 """
 function qsetpos(plotID::Integer, set::Bool = false, x = 0, y = 0, w = 0, h = 0)
