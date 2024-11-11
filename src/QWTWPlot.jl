@@ -183,7 +183,7 @@ function onPickUdp(x::Vector{UInt8})
 		ii = QCBInfo(type, plotID, lineID, index, xx, yy, iks, igrek, zet, time, label)
 	catch ex
 		if qwtwDebugMode
-			@printf "cannot process picker message\n "
+			@printf "cannot process picker message    ($ex)\n "
 			bt = backtrace()
 			msg = sprint(showerror, ex, bt)
 			@printf "%s\n" msg
@@ -195,7 +195,7 @@ function onPickUdp(x::Vector{UInt8})
 		Base.invokelatest(cbFunction, ii)  # call the user function
 		stest2 = ccall(qwtwServiceH, Int32, (Int32,), 2);
 	catch ex
-		@printf "onPickUdp: callback function failed\n "
+		@printf "onPickUdp: callback function failed    ($ex)\n "
 		bt = backtrace()
 		msg = sprint(showerror, ex, bt)
 		@printf "%s\n" msg
@@ -236,7 +236,7 @@ function onClipUdp(x::Vector{UInt8})
 		ii = QClipCallbackInfo(time1, time2, clipGroup, havePos, x1, y1, z1, x2, y2, z2)
 	catch ex
 		if qwtwDebugMode
-			@printf "onClipUdp: cannot process 'clip' message\n "
+			@printf "onClipUdp: cannot process 'clip' message    ($ex)\n "
 			bt = backtrace()
 			msg = sprint(showerror, ex, bt)
 			@printf "%s\n" msg
@@ -387,8 +387,8 @@ function printEnv()
 		catch
 			@printf "no LD_LIBRARY_PATH\n\n"
 		end
-	catch
-		@printf "printEnv: not everything was printed \n"
+	catch ex
+		@printf "printEnv: not everything was printed ($ex)\n"
 	end
 end
 
@@ -629,9 +629,9 @@ function qstart(;debug = false, qwtw_test = false, libraryName = "libqwtw", marb
 
 	try
 		qwtwMapViewH = Libdl.dlsym(qwtwLibHandle, "qwtmap")
-	catch
+	catch ex1
 		qwtwMapViewH = 0
-		@printf "WARNING: topview functions disabled (looks like no [marble] support)\n"
+		@printf "WARNING: topview functions disabled (looks like no [marble] support) ($ex1)\n"
 	end
 
 	qwtwsetimpstatusH = Libdl.dlsym(qwtwLibHandle, "qwtsetimpstatus")
@@ -660,23 +660,23 @@ function qstart(;debug = false, qwtw_test = false, libraryName = "libqwtw", marb
 
 	try
 		qwtwClipGroupH = Libdl.dlsym(qwtwLibHandle, "qwtclipgroup")
-	catch
-		@printf "WARNING: clip groups disabled (wrong qwtw version?) \n"
+	catch ex2
+		@printf "WARNING: clip groups disabled (wrong qwtw version?) ($ex2)\n"
 	end
 
 	try
 		qwtEnableBroadcastH = Libdl.dlsym(qwtwLibHandle, "qwtEnableCoordBroadcast")
 		qwtDisableBroadcastH = Libdl.dlsym(qwtwLibHandle, "qwtDisableCoordBroadcast")
-	catch
-		@printf "WARNING: UDP broacast disabled \n"
+	catch ex3
+		@printf "WARNING: UDP broacast disabled  ($ex3) \n"
 	end
 
 	try 
 		qwtMglH = Libdl.dlsym(qwtwLibHandle, "qwtmgl")
 		qwtMglLine = Libdl.dlsym(qwtwLibHandle, "qwtmgl_line")
 		qwtMglMesh = Libdl.dlsym(qwtwLibHandle, "qwtmgl_mesh")
-	catch
-		@printf "WARNING: 3D features disabled \n"
+	catch   ex4
+		@printf "WARNING: 3D features disabled  ($ex4) \n"
 	end
 #=
 	try 
@@ -713,13 +713,13 @@ function qstart(;debug = false, qwtw_test = false, libraryName = "libqwtw", marb
 			test = ccall(qwtStartH, Int32, (Ptr{UInt8}, Ptr{UInt8}), 
 				marbleDataPath, marblePluginPath); # very important to call this in the very beginning
 		end
-	catch ex
+	catch ex5
 		if debug
 			printEnv();
 		end
 		restoreEnv()
-		@printf "Sorry, cannot start qwtw. Something is wrong\n" 
-		throw(ex)
+		@printf "Sorry, cannot start qwtw. Something is wrong   ($ex5)\n" 
+		throw(ex5)
 	end
 	#end
 	#@printf "qtstart = %d \n" test	
@@ -981,7 +981,7 @@ function qfmap(n)::Int32
 	try
 		test = ccall(qwtwMapViewH, Int32, (Int32,), n);
 	catch ex
-		@printf "ERROR in QWTWPlot::qfmap()\n"
+		@printf "ERROR in QWTWPlot::qfmap() ($ex)\n"
 		println(ex)
 	end
 	return test
@@ -1052,8 +1052,8 @@ function qmgline(x::Vector{Float64}, y::Vector{Float64}, z::Vector{Float64}, sty
 		n, x, y, z, name, style);
 
 		sleep(0.025)
-	catch
-		@printf "ERROR in QWTWPlot::qmgline\n"
+	catch ex
+		@printf "ERROR in QWTWPlot::qmgline ($ex)\n"
 	end
 	return
 end
@@ -1103,8 +1103,8 @@ function qmglmesh(data::Array{Float64, 2}, xMin = -10.0, xMax = 10.0, yMin = -10
 		xMin, xMax, yMin, yMax, data,  name, style, type);
 
 		sleep(0.025)
-	catch
-		@printf "ERROR in QWTWPlot::qwtMglMesh\n"
+	catch ex
+		@printf "ERROR in QWTWPlot::qwtMglMesh   ($ex)\n"
 	end
 	return
 end
@@ -1304,10 +1304,10 @@ function qplot(x::Vector{Float64}, y::Vector{Float64}, name::String, style::Stri
 	end
 	try
 		test = ccall(qwtwPlotH, Int32, (Ptr{Float64}, Ptr{Float64}, Int32, Ptr{UInt8}, Ptr{UInt8}, Int32, Int32),
-			x, y, n, name, style, ww, s);
+			x, y, n, name, style, ww, s)
 		sleep(0.025)
-	catch
-		@printf "qplot: error #2  n = %d;  name = %s style = %s\n" n name style
+	catch  ex
+		@printf "qplot: error #2  n = %d;  name = %s style = %s    ($ex)\n" n name style
 		traceit("error #2")
 		return -42
 	end
@@ -1369,7 +1369,7 @@ function qplot1(x::Vector{Float64}, y::Vector{Float64}, name::String, style::Str
 		test = ccall(qwtwPlotH, Int32, (Ptr{Float64}, Ptr{Float64}, Int32, Ptr{UInt8}, Ptr{UInt8}, Int32, Int32),
 			x, y, n, name, style, 1, ww);
 	catch ex
-		@printf "qplot1 ERROR\n"
+		@printf "qplot1 ERROR    ($ex)\n"
 		throw(ex)
 		return -42
 	end
@@ -1426,7 +1426,7 @@ function qchange(id::Int32, x::Vector{Float64}, y::Vector{Float64}, t::Vector{Fl
 		test = ccall(qwtwChangeLineH, Int32, (Int32, Ptr{Float64}, Ptr{Float64}, Ptr{Float64}, Ptr{Float64}, Int32), 
 			id, x, y, zz, tt, n);
 	catch ex
-		@printf "qchange ERROR\n"
+		@printf "qchange ERROR    ($ex)\n"
 		throw(ex)
 		return -42
 	end
@@ -1590,7 +1590,7 @@ function qplot2(x::Array{Float64}, y::Array{Float64}, time::Array{Float64}, name
 		test = ccall(qwtwPlot2H, Int32, (Ptr{Float64}, Ptr{Float64}, Int32, Ptr{UInt8}, Ptr{UInt8}, Int32, Int32, Ptr{Float64}),
 			x, y, n, name, style, ww, s, time);
 	catch ex
-		@printf "qplot1 ERROR\n"
+		@printf "qplot1 ERROR    ($ex)\n"
 		throw(ex)
 		return -42
 	end
