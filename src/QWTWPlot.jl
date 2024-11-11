@@ -146,7 +146,7 @@ function onPickUdp(x::Vector{UInt8})
 	ii = QCBInfo()
 
 	if qwtwDebugMode
-		@printf "onPickUdp starting!\n"
+		@info "onPickUdp starting!\n"
 	end
 
 	try
@@ -177,16 +177,16 @@ function onPickUdp(x::Vector{UInt8})
 			label = String(x[61:eos-1])
 		end
 		if qwtwDebugMode
-			@printf "\t type = %d; index = %d; label = %s\n" type index label
+			@info "\t type = $type; index = $index; label = $label" 
 		end
 
 		ii = QCBInfo(type, plotID, lineID, index, xx, yy, iks, igrek, zet, time, label)
 	catch ex
 		if qwtwDebugMode
-			@printf "cannot process picker message    ($ex)\n "
+			@info "cannot process picker message    ($ex)\n "
 			bt = backtrace()
 			msg = sprint(showerror, ex, bt)
-			@printf "%s\n" msg
+			@info "$msg"
 		end
 	end
 
@@ -195,10 +195,10 @@ function onPickUdp(x::Vector{UInt8})
 		Base.invokelatest(cbFunction, ii)  # call the user function
 		stest2 = ccall(qwtwServiceH, Int32, (Int32,), 2);
 	catch ex
-		@printf "onPickUdp: callback function failed    ($ex)\n "
+		@info "onPickUdp: callback function failed    ($ex)"
 		bt = backtrace()
 		msg = sprint(showerror, ex, bt)
-		@printf "%s\n" msg
+		@info "$msg"
 	end
 
 	return
@@ -217,7 +217,7 @@ function onClipUdp(x::Vector{UInt8})
 	ii = QClipCallbackInfo()
 
 	if qwtwDebugMode
-		@printf "onClipUdp\n"
+		@info "onClipUdp"
 	end
 
 	try
@@ -236,15 +236,15 @@ function onClipUdp(x::Vector{UInt8})
 		ii = QClipCallbackInfo(time1, time2, clipGroup, havePos, x1, y1, z1, x2, y2, z2)
 	catch ex
 		if qwtwDebugMode
-			@printf "onClipUdp: cannot process 'clip' message    ($ex)\n "
+			@info "onClipUdp: cannot process 'clip' message    ($ex)"
 			bt = backtrace()
 			msg = sprint(showerror, ex, bt)
-			@printf "%s\n" msg
+			@info "$msg" 
 		end
 	end
 
 	if qwtwDebugMode
-		@printf "\ttime1 = %f, time2 = %f\n" ii.t1  ii.t2
+		@info "\ttime1 = $(ii.t1), time2 = $(ii.t2)"  
 	end
 
 	try
@@ -252,10 +252,10 @@ function onClipUdp(x::Vector{UInt8})
 		Base.invokelatest(clipCallbackFunction, ii) # call the user function
 		stest2 = ccall(qwtwServiceH, Int32, (Int32,), 2);
 	catch ex
-		@printf "onClipUdp: callback function failed\n "
+		@info "onClipUdp: callback function failed"
 		bt = backtrace()
 		msg = sprint(showerror, ex, bt)
-		@printf "%s\n" msg
+		@info "$msg" 
 	end
 
 	return
@@ -315,15 +315,15 @@ function udpDataReader()
 		nx = length(x)
 		if nx < 80      # too short message
 			if qwtwDebugMode
-				@printf "\t QWTWPlot udpDataReader() got %d bytes" nx
+				@info "\t QWTWPlot udpDataReader() got $nx bytes" 
 			end
 			continue
 		end
 
 		if qwtwDebugMode
-			@printf "got %d bytes  \n" length(x) 
+			@info "got $(length(x)) bytes " 
 			print(typeof(x))
-			@printf "  %s\n" x[1:4]
+			@info "  $(x[1:4])" 
 			#print(x)
 		end
 
@@ -379,16 +379,16 @@ simply print some of the env variables
 """
 function printEnv()
 	try
-		@printf "\n\tPATH = %s \n\n" String(ENV["PATH"])
-		@printf "\n\tQT_PLUGIN_PATH = %s \n\n" String(ENV["QT_PLUGIN_PATH"])
+		@info "\n\tPATH = $(String(ENV["PATH"])) \n" 
+		@info "\n\tQT_PLUGIN_PATH = $(String(ENV["QT_PLUGIN_PATH"])) \n" 
 		try
 			ldp = String(ENV["LD_LIBRARY_PATH"])
-			@printf "\n\tLD_LIBRARY_PATH = %s \n\n" ldp
+			@info "\n\tLD_LIBRARY_PATH = $ldp \n" 
 		catch
-			@printf "no LD_LIBRARY_PATH\n\n"
+			@info "no LD_LIBRARY_PATH\n"
 		end
 	catch ex
-		@printf "printEnv: not everything was printed ($ex)\n"
+		@info "printEnv: not everything was printed ($ex)\n"
 	end
 end
 
@@ -415,15 +415,15 @@ function addEnvItem(item, var::String; debug = false)
 	if typeof(item) == String # simple case
 		item2Add = item
 		if debug
-			@printf "adding [%s] to [%s] \n" item2Add  var
+			@info "adding [$(item2Add)] to [$(var)] "   
 		end
 	elseif typeof(item) == Base.RefValue{String} # this can happen also
 		item2Add = item[]
 		if debug
-			@printf "adding [%s] to [%s] \n" item2Add  var
+			@info "adding [$item2Add] to [$var]"   
 		end
 	else  # strange case
-		@printf "WARNING: trying to add following item to %s : " var
+		@info "WARNING: trying to add following item to $var : " 
 		print(item)
 		try
 			item2Add = String(item)
@@ -438,11 +438,11 @@ function addEnvItem(item, var::String; debug = false)
 		else
 			ENV[var] = item2Add 
 			if debug
-				@printf " new ENV %s created \n " var
+				@info " new ENV $var created " 
 			end
 		end
 	catch ex
-		@printf "ERROR while adding item to [%s]: " var
+		@info "ERROR while adding item to [$var]: " 
 		print(ex)
 		print(item)
 	end
@@ -465,7 +465,7 @@ function qstart(;debug = false, qwtw_test = false, libraryName = "libqwtw", marb
 	qwtwDebugMode = debug
 	qwtw_libName = "nolib"
 	if debug
-		@printf "starting qwtw; current path: %s\n\n" ENV["PATH"]
+		@info "starting qwtw; current path: $(ENV["PATH"])\n" 
 	end
 
 	# this could be still useful:
@@ -486,7 +486,7 @@ function qstart(;debug = false, qwtw_test = false, libraryName = "libqwtw", marb
 
 	if started
 		if debug
-			@printf "qwtw already started\n"
+			@info "qwtw already started"
 		end
 		return 0
 	end
@@ -535,7 +535,7 @@ function qstart(;debug = false, qwtw_test = false, libraryName = "libqwtw", marb
 		qwtw_libName = libraryName * ".dll"
 	else # hopefully this may be Linux
 		if debug
-			@printf "\t non-Windows detected\n"
+			@info "\t non-Windows detected"
 		end
 		qwtw_libName = libraryName * ".so"
 	end
@@ -555,8 +555,8 @@ function qstart(;debug = false, qwtw_test = false, libraryName = "libqwtw", marb
 	end
 
 	if debug
-		@printf "qwtw test; loading %s .. \n" qwtw_libName
-		@printf "\nPATH = %s\n\n" ENV["PATH"]
+		@info "qwtw test; loading $(qwtw_libName) .. " 
+		@info "\nPATH = $(ENV["PATH"])\n" 
 	end
 	if qwtw_test	# do nothing
 		
@@ -585,19 +585,19 @@ function qstart(;debug = false, qwtw_test = false, libraryName = "libqwtw", marb
 	end
 
 	if debug
-		@printf "\nloading %s \n" qwtw_libName 
-		@printf "corrected ENV:\n"
+		@info "\nloading $qwtw_libName "  
+		@info "corrected ENV:"
 		@static if Sys.iswindows() 
 
 		else
 			try
-				@printf "LD_LIBRARY_PATH: %s \n\n" String(ENV["LD_LIBRARY_PATH"])
+				@info "LD_LIBRARY_PATH: $(String(ENV["LD_LIBRARY_PATH"])) \n" 
 			catch
-				@printf "NO LD_LIBRARY_PATH \n"
+				@info "NO LD_LIBRARY_PATH "
 			end
 		end
-		@printf "PATH: %s \n\n" String(ENV["PATH"])
-		@printf "\n"
+		@info "PATH: $(String(ENV["PATH"])) \n" 
+		@info "\n"
 	end	
 
 	try 
@@ -607,12 +607,12 @@ function qstart(;debug = false, qwtw_test = false, libraryName = "libqwtw", marb
 			printEnv();
 		end
 		restoreEnv()
-		@info "Sorry, dlopen for $qwtw_libName failed; something is wrong ($ex)\n"
+		@info "Sorry, dlopen for $qwtw_libName failed; something is wrong ($ex)"
 		throw(ex)
 	end
 
 	if debug 
-		@printf "\nlibrary %s opened from %s \n" qwtw_libName  Libdl.dlpath(qwtwLibHandle)
+		@info "\nlibrary $qwtw_libName opened from $(Libdl.dlpath(qwtwLibHandle)) "   
 	end
 	qwtwFigureH = Libdl.dlsym(qwtwLibHandle, "qwtfigure")
 	try
@@ -631,7 +631,7 @@ function qstart(;debug = false, qwtw_test = false, libraryName = "libqwtw", marb
 		qwtwMapViewH = Libdl.dlsym(qwtwLibHandle, "qwtmap")
 	catch ex1
 		qwtwMapViewH = 0
-		@printf "WARNING: topview functions disabled (looks like no [marble] support) ($ex1)\n"
+		@info "WARNING: topview functions disabled (looks like no [marble] support) ($ex1)"
 	end
 
 	qwtwsetimpstatusH = Libdl.dlsym(qwtwLibHandle, "qwtsetimpstatus")
@@ -661,14 +661,14 @@ function qstart(;debug = false, qwtw_test = false, libraryName = "libqwtw", marb
 	try
 		qwtwClipGroupH = Libdl.dlsym(qwtwLibHandle, "qwtclipgroup")
 	catch ex2
-		@printf "WARNING: clip groups disabled (wrong qwtw version?) ($ex2)\n"
+		@info "WARNING: clip groups disabled (wrong qwtw version?) ($ex2)"
 	end
 
 	try
 		qwtEnableBroadcastH = Libdl.dlsym(qwtwLibHandle, "qwtEnableCoordBroadcast")
 		qwtDisableBroadcastH = Libdl.dlsym(qwtwLibHandle, "qwtDisableCoordBroadcast")
 	catch ex3
-		@printf "WARNING: UDP broacast disabled  ($ex3) \n"
+		@info "WARNING: UDP broacast disabled  ($ex3) "
 	end
 
 	try 
@@ -676,7 +676,7 @@ function qstart(;debug = false, qwtw_test = false, libraryName = "libqwtw", marb
 		qwtMglLine = Libdl.dlsym(qwtwLibHandle, "qwtmgl_line")
 		qwtMglMesh = Libdl.dlsym(qwtwLibHandle, "qwtmgl_mesh")
 	catch   ex4
-		@printf "WARNING: 3D features disabled  ($ex4) \n"
+		@info "WARNING: 3D features disabled  ($ex4) "
 	end
 #=
 	try 
@@ -700,9 +700,9 @@ function qstart(;debug = false, qwtw_test = false, libraryName = "libqwtw", marb
 =#
 	# hangs tight!!!!
 	if debug
-		@printf "starting qstart in debug mode \n"
-		@printf "\tmarbleDataPath %s \n" marbleDataPath
-		@printf "\tmarblePluginPath %s \n" marblePluginPath
+		@info "starting qstart in debug mode "
+		@info "\tmarbleDataPath $marbleDataPath " 
+		@info "\tmarblePluginPath $marblePluginPath " 
 	end
 	test = 1
 	try
@@ -718,7 +718,7 @@ function qstart(;debug = false, qwtw_test = false, libraryName = "libqwtw", marb
 			printEnv();
 		end
 		restoreEnv()
-		@printf "Sorry, cannot start qwtw. Something is wrong   ($ex5)\n" 
+		@info "Sorry, cannot start qwtw. Something is wrong   ($ex5)" 
 		throw(ex5)
 	end
 	#end
@@ -733,7 +733,7 @@ function qstart(;debug = false, qwtw_test = false, libraryName = "libqwtw", marb
 			println(version);
 		end
 	else
-		@printf "\nERROR: library was not started (return code %d) \n" test
+		@info "\nERROR: library was not started (return code $test) " 
 		if debug
 			printEnv();
 		end
@@ -764,11 +764,11 @@ function qstop()
 			ccall(qwtStopH,  Cvoid, ())
 			#@printf "qwtw stopped\n"
 		else
-			@printf "error: was not started correctly\n"
+			@info "error: was not started correctly"
 		end
 		Libdl.dlclose(qwtwLibHandle)
 	else
-		@printf "not started (was qstart() called?)\n"
+		@info "not started (was qstart() called?)"
 		return
 	end
 	qwtwLibHandle = 0
@@ -833,7 +833,7 @@ Returns ID of the created plot.
 function qfigure(n::Integer = 0; xAxisType=:aLinear, yAxisType=:aLinear)::Int32
 	global qwtwFigureH, started
 	if !started
-		@printf "not started (was qstart() called?)\n"
+		@info "not started (was qstart() called?)"
 		return 0
 	end
 	flags::UInt32 = 0
@@ -852,7 +852,7 @@ end;
 function qspectrogram(n::Integer = 0; xAxisType=:aLinear, yAxisType=:aLinear)::Int32
 	global qwtwSpectrogramTestH, started
 	if !started
-		@printf "not started (was qstart() called?)\n"
+		@info "not started (was qstart() called?)"
 		return 0
 	end
 	flags::UInt32 = 0
@@ -932,11 +932,11 @@ useful in case some of the plots have another time range.
 function qclipgrp(gr) 
 	global qwtwClipGroupH, qwtwLibHandle, started
 	if (qwtwLibHandle == 0) || (!started)
-		@printf "not started (was qstart() called?)\n"
+		@info "not started (was qstart() called?)"
 		return
 	end
 	if qwtwClipGroupH == 0
-		@printf "clip groups are not supported, sorry\n"
+		@info "clip groups are not supported, sorry"
 		return
 	end
 
@@ -953,7 +953,7 @@ id: ID of the line to remove
 function qremove(id::Int32)
 	global qwtwRemoveLineH, started
 	if !started
-		@printf "not started (was qstart() called?)\n"
+		@info "not started (was qstart() called?)"
 		return
 	end
 	ccall(qwtwRemoveLineH, Cvoid, (Int32,), id);
@@ -970,18 +970,18 @@ create a new  plot window to draw on a map (with specific window ID)\\
 function qfmap(n)::Int32
 	global qwtwMapViewH, qwtwLibHandle, started
 	if (qwtwLibHandle == 0) || (!started)
-		@printf "not started (was qstart() called?)\n"
+		@info "not started (was qstart() called?)"
 		return 0
 	end
 	if qwtwMapViewH == 0
-		@printf "map vew not supported, sorry\n"
+		@info "map vew not supported, sorry"
 		return 0
 	end
 	test = 0
 	try
 		test = ccall(qwtwMapViewH, Int32, (Int32,), n);
 	catch ex
-		@printf "ERROR in QWTWPlot::qfmap() ($ex)\n"
+		@info "ERROR in QWTWPlot::qfmap() ($ex)"
 		println(ex)
 	end
 	return test
@@ -1006,11 +1006,11 @@ currently works only for Linux (?)
 function qmgl(n = 0)::Int32
 	global qwtMglH, qwtwLibHandle, started
 	if (qwtwLibHandle == 0) || (!started)
-		@printf "not started (was qstart() called?)\n"
+		@info "not started (was qstart() called?)"
 		return 0
 	end
 	if qwtMglH == 0
-		@printf "3D not supported, sorry\n"
+		@info "3D not supported, sorry"
 		return 0
 	end
 
@@ -1032,15 +1032,15 @@ name - a legend for this line
 function qmgline(x::Vector{Float64}, y::Vector{Float64}, z::Vector{Float64}, style::String = "-sb"; name = "")
 	global qwtMglLine, qwtwLibHandle, started
 	if (qwtwLibHandle == 0) || (!started)
-		@printf "not started (was qstart() called?)\n"
+		@info "not started (was qstart() called?)"
 		return
 	end
 	if qwtMglLine == 0
-		@printf "3D not supported, sorry\n"
+		@info "3D not supported, sorry"
 		return
 	end
 	if length(x) < 1
-		@printf "QWTWPlot::qmgline empty X value\n"
+		@info "QWTWPlot::qmgline empty X value"
 		return
 	end
 	n = length(x)
@@ -1053,7 +1053,7 @@ function qmgline(x::Vector{Float64}, y::Vector{Float64}, z::Vector{Float64}, sty
 
 		sleep(0.025)
 	catch ex
-		@printf "ERROR in QWTWPlot::qmgline ($ex)\n"
+		@info "ERROR in QWTWPlot::qmgline ($ex)"
 	end
 	return
 end
@@ -1075,20 +1075,20 @@ name - not used yet (maybe will add later)
 function qmglmesh(data::Array{Float64, 2}, xMin = -10.0, xMax = 10.0, yMin = -10.0, yMax = 10.0,  style::String = ""; name = "", type = 0)
 	global qwtMglMesh, qwtwLibHandle, started
 	if (qwtwLibHandle == 0) || (!started)
-		@printf "not started (was qstart() called?)\n"
+		@info "not started (was qstart() called?)"
 		return
 	end
 	if qwtMglMesh == 0
-		@printf "3D not supported, sorry\n"
+		@info "3D not supported, sorry"
 		return
 	end
 	if length(data) < 1
-		@printf "QWTWPlot::qmgline empty X value\n"
+		@info "QWTWPlot::qmgline empty X value"
 		return
 	end
 	d = size(data)
 	if (d[1] < 1) || (d[2] < 1) 
-		@printf "QWTWPlot::qmglmesh empty data\n"
+		@info "QWTWPlot::qmglmesh empty data"
 		return
 	end
 	xSize = d[1]
@@ -1104,7 +1104,7 @@ function qmglmesh(data::Array{Float64, 2}, xMin = -10.0, xMax = 10.0, yMin = -10
 
 		sleep(0.025)
 	catch ex
-		@printf "ERROR in QWTWPlot::qwtMglMesh   ($ex)\n"
+		@info "ERROR in QWTWPlot::qwtMglMesh   ($ex)"
 	end
 	return
 end
@@ -1130,7 +1130,7 @@ looks like `0` means 'not important', `1` means "important.\\
 function qimportant(i)
 	global qwtwsetimpstatusH, qwtwLibHandle, started
 	if (qwtwLibHandle == 0) || (!started)
-		@printf "not started (was qstart() called?)\n"
+		@info "not started (was qstart() called?)"
 		return
 	end
 
@@ -1146,7 +1146,7 @@ close all the plots
 function qclear()
 	global qwtwCLearH, qwtwLibHandle, started
 	if (qwtwLibHandle == 0) || (!started)
-		@printf "not started (was qstart() called?)\n"
+		@info "not started (was qstart() called?)"
 		return
 	end
 	
@@ -1168,7 +1168,7 @@ function qsavepng(fileName::String, plotId::Integer = 0)
 	global qwtSavePng, qwtwLibHandle, started
 	global qwtwDebugMode
 	if (qwtwLibHandle == 0) || (!started)
-		@printf "not started (was qstart() called?)\n"
+		@info "not started (was qstart() called?)"
 		return 150
 	end
 
@@ -1199,7 +1199,7 @@ result, xx, yy, ww, hh = operation result, left, top, width, height
 function qsetpos(plotID::Integer, set::Bool = false, x = 0, y = 0, w = 0, h = 0)
 	global qwtSetPosH, qwtwLibHandle, started
 	if (qwtwLibHandle == 0) || (!started) || (qwtSetPosH == 0)
-		@printf "qsetpos(); qwtw not started (was qstart() called?)\n"
+		@info "qsetpos(); qwtw not started (was qstart() called?)"
 		return 150
 	end
 	xx = Ref{Cint}(x)
@@ -1241,7 +1241,7 @@ open/show "main control window".
 function qsmw()
 	global qwtwMWShowH, qwtwLibHandle, started
 	if (qwtwLibHandle == 0) || (!started)
-		@printf "not started (was qstart() called?)\n"
+		@info "not started (was qstart() called?)"
 		return
 	end
 
@@ -1279,7 +1279,7 @@ function qplot(x::Vector{Float64}, y::Vector{Float64}, name::String, style::Stri
 	global qwtwPlotH, qwtwLibHandle, started, qwtwDebugMode
 	global errrorBreak
 	if (qwtwLibHandle == 0) || (!started)
-		@printf "not started (was qstart() called?)\n"
+		@info "not started (was qstart() called?)"
 		return -88
 	end
 
@@ -1300,14 +1300,14 @@ function qplot(x::Vector{Float64}, y::Vector{Float64}, name::String, style::Stri
 	test::Int32 = -50
 
 	if qwtwDebugMode
-		@printf "qplot: (%s) (%s) n=%d \n " name style n
+		@info "qplot: ($name) ($style) n=$n "
 	end
 	try
 		test = ccall(qwtwPlotH, Int32, (Ptr{Float64}, Ptr{Float64}, Int32, Ptr{UInt8}, Ptr{UInt8}, Int32, Int32),
 			x, y, n, name, style, ww, s)
 		sleep(0.025)
 	catch  ex
-		@printf "qplot: error #2  n = %d;  name = %s style = %s    ($ex)\n" n name style
+		@info "qplot: error #2  n = $n;  name = $name style = $style    ($ex)" 
 		traceit("error #2")
 		return -42
 	end
@@ -1343,7 +1343,7 @@ function qplot1(x::Vector{Float64}, y::Vector{Float64}, name::String, style::Str
 	global qwtwPlotH, qwtwLibHandle, started, qwtwDebugMode
 	global errrorBreak
 	if (qwtwLibHandle == 0) || (!started)
-		@printf "not started (was qstart() called?)\n"
+		@info "not started (was qstart() called?)"
 		return -88
 	end
 
@@ -1362,14 +1362,14 @@ function qplot1(x::Vector{Float64}, y::Vector{Float64}, name::String, style::Str
 	ww::Int32 = symSize;
 	test::Int32 = -50
 	if qwtwDebugMode
-		@printf "qplot1: (%s) (%s) n=%d \n " name style n
+		@info "qplot1: ($name) ($style) n=$n "
 	end
 
 	try
 		test = ccall(qwtwPlotH, Int32, (Ptr{Float64}, Ptr{Float64}, Int32, Ptr{UInt8}, Ptr{UInt8}, Int32, Int32),
 			x, y, n, name, style, 1, ww);
 	catch ex
-		@printf "qplot1 ERROR    ($ex)\n"
+		@info "qplot1 ERROR    ($ex)"
 		throw(ex)
 		return -42
 	end
@@ -1390,7 +1390,7 @@ function qchange(id::Int32, x::Vector{Float64}, y::Vector{Float64}, t::Vector{Fl
 	global qwtwChangeLineH, started
 	global errrorBreak
 	if !started
-		@printf "not started (was qstart() called?)\n"
+		@info "not started (was qstart() called?)"
 		return
 	end
 	n = length(x)
@@ -1426,7 +1426,7 @@ function qchange(id::Int32, x::Vector{Float64}, y::Vector{Float64}, t::Vector{Fl
 		test = ccall(qwtwChangeLineH, Int32, (Int32, Ptr{Float64}, Ptr{Float64}, Ptr{Float64}, Ptr{Float64}, Int32), 
 			id, x, y, zz, tt, n);
 	catch ex
-		@printf "qchange ERROR    ($ex)\n"
+		@info "qchange ERROR    ($ex)"
 		throw(ex)
 		return -42
 	end
@@ -1480,7 +1480,7 @@ function qEnableCoordBroadcast(x::Vector{Float64}, y::Vector{Float64}, z::Vector
 	 		time::Vector{Float64})
 	global qwtEnableBroadcastH, qwtwLibHandle, started
 	if (qwtwLibHandle == 0) || (!started)
-		@printf "not started (was qstart() called?)\n"
+		@info "not started (was qstart() called?)"
 		return
 	end
 
@@ -1491,7 +1491,7 @@ function qEnableCoordBroadcast(x::Vector{Float64}, y::Vector{Float64}, z::Vector
 	n = length(time)
 
 	if n < 1
-		@printf "QWTWPlot qEnableCoordBroadcast: bad input array length (%d) \n" n
+		@info "QWTWPlot qEnableCoordBroadcast: bad input array length ($n) "
 	end
 
 	ccall(qwtEnableBroadcastH, Cvoid, (Ptr{Float64}, Ptr{Float64}, Ptr{Float64},
@@ -1510,7 +1510,7 @@ This function will stop UDP server and client.
 function qDisableCoordBroadcast()
 	global qwtDisableBroadcastH, qwtwLibHandle, started
 	if (qwtwLibHandle == 0) || (!started)
-		@printf "not started (was qstart() called?)\n"
+		@info "not started (was qstart() called?)"
 		return
 	end
 
@@ -1564,7 +1564,7 @@ function qplot2(x::Array{Float64}, y::Array{Float64}, time::Array{Float64}, name
 	global qwtwPlot2H, qwtwLibHandle, started, qwtwDebugMode
 	global errrorBreak
 	if (qwtwLibHandle == 0) || (!started)
-		@printf "not started (was qstart() called?)\n"
+		@info "not started (was qstart() called?)"
 		return -88
 	end
 	n = length(x)
@@ -1584,13 +1584,13 @@ function qplot2(x::Array{Float64}, y::Array{Float64}, time::Array{Float64}, name
 	s::Int32 = symSize;
 	test::Int32 = -50
 	if qwtwDebugMode
-		@printf "qplot2: (%s) (%s) n=%d \n " name style n
+		@info "qplot2: ($name) ($style) n=$n "
 	end
 	try 
 		test = ccall(qwtwPlot2H, Int32, (Ptr{Float64}, Ptr{Float64}, Int32, Ptr{UInt8}, Ptr{UInt8}, Int32, Int32, Ptr{Float64}),
 			x, y, n, name, style, ww, s, time);
 	catch ex
-		@printf "qplot1 ERROR    ($ex)\n"
+		@info "qplot1 ERROR    ($ex)"
 		throw(ex)
 		return -42
 	end
@@ -1607,7 +1607,7 @@ put a label on the horizontal axis on the bottom.
 function qxlabel(s::String)
 	global qwtwXlabelH, qwtwLibHandle, started
 	if (qwtwLibHandle == 0) || (!started)
-		@printf "not started (was qstart() called?)\n"
+		@info "not started (was qstart() called?)"
 		return
 	end
 
@@ -1623,7 +1623,7 @@ put a label on the left vertical axis
 function qylabel(s::String)
 	global qwtwYlabelH, qwtwLibHandle, started
 	if (qwtwLibHandle == 0) || (!started)
-		@printf "not started (was qstart() called?)\n"
+		@info "not started (was qstart() called?)"
 		return
 	end
 
@@ -1639,7 +1639,7 @@ put a title on the current plot.
 function qtitle(s::String)
 	global qwywTitleH, qwtwLibHandle, started
 	if (qwtwLibHandle == 0) || (!started)
-		@printf "not started (was qstart() called?)\n"
+		@info "not started (was qstart() called?)"
 		return
 	end
 
@@ -1677,13 +1677,13 @@ function stopUdpThread()
 	global cbLock
 
 	if qwtwDebugMode
-		@printf "stopUdpThread: istaskdone1(cbTaskH): %d\n" istaskdone(cbTaskH)
+		@info "stopUdpThread: istaskdone1(cbTaskH): $(istaskdone(cbTaskH))" 
 	end
 	#if istaskstarted(cbTaskH) # stop the task
 	if islocked(cbLock)
 		@assert istaskstarted(cbTaskH)
 		if qwtwDebugMode
-			@printf "stopping the task..\n"
+			@info "stopping the task.."
 		end
 		pleaseStopUdp = true
 		group = IPv4(smip)
@@ -1695,7 +1695,7 @@ function stopUdpThread()
 		end
 
 		if qwtwDebugMode
-			@printf "waiting for the task to finish..\n"
+			@info "waiting for the task to finish.."
 		end
 		#while !istaskdone(cbTaskH)
 		#end
@@ -1705,8 +1705,8 @@ function stopUdpThread()
 
 		wait(cbTaskH)
 		if qwtwDebugMode
-			@printf "finished ..\n"
-			@printf "stopUdpThread: istaskdone2(cbTaskH): %d\n" istaskdone(cbTaskH)
+			@info "finished .."
+			@info "stopUdpThread: istaskdone2(cbTaskH): $(istaskdone(cbTaskH))\n" 
 		end
 
 		cbTaskH = @task udpDataReader();
@@ -1748,7 +1748,7 @@ function qsetCallback(cb)
 	#@printf "qsetCallback locked ! \n"
 	cbFunction = cb
 	if qwtwDebugMode
-		@printf "setting up cbFunction \n"
+		@info "setting up cbFunction "
 	end
 	#unlock(cbLock)
 	#@printf "qsetCallback unlocked ! \n"
@@ -1772,7 +1772,7 @@ function qsetClipCallback(cb)
 	stopUdpThread()
 	clipCallbackFunction = cb
 	if qwtwDebugMode
-		@printf "setting up clipCallbackFunction! \n"
+		@info "setting up clipCallbackFunction! "
 	end
 	startUdpThread()
 	return
