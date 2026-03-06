@@ -449,7 +449,7 @@ function addEnvItem(item, var::String; debug = false)
 end
 
 """
-	qstart(;debug = false, qwtw_test = false, libraryName = "libqwtw", marblePluginPath = "")::Int32
+	qstart(;debug = false, qwtw_test = false, libraryName = "libqwtw", marblePluginPath = "", skipMarble=false)::Int32
 
 starts the qwtw "C" library.   Without it, nothing will work. Call it before any other functions.  
 
@@ -457,10 +457,13 @@ starts the qwtw "C" library.   Without it, nothing will work. Call it before any
 * qwtw_test	-> if true, will try to not modify env variables.   
 * libraryName: if not empty, then use this a a library name instead of the library from artifact (for debugging)  
 * marblePluginPath alternative location for 'Marble plugins'. In case you have your own build of the Marble library (used for drawing a map). 
+* skipMarble when true, skip accessing `marble_jll.artifact_dir` and pass empty marble data/plugin paths to the native library.
+
+Note: `Qt_jll` and `marble_jll` only define `artifact_dir` when a platform-specific JLL wrapper exists (e.g. `Qt_jll` has no aarch64-apple-darwin wrapper). On such platforms, QT_PLUGIN_PATH and Marble paths are skipped; use system Qt/Marble or compatible builds if needed.
 
 return 0 if success
 """
-function qstart(;debug = false, qwtw_test = false, libraryName = "libqwtw", marblePluginPath = "")::Int32
+function qstart(;debug = false, qwtw_test = false, libraryName = "libqwtw", marblePluginPath = "", skipMarble=false)::Int32
 	global qwtwDebugMode
 	qwtwDebugMode = debug
 	qwtw_libName = "nolib"
@@ -531,26 +534,42 @@ function qstart(;debug = false, qwtw_test = false, libraryName = "libqwtw", marb
 		#udpDataReader();
 	end
 
-	@static if Sys.iswindows() #  this part will handle OS differences
+	@static if Sys.iswindows()
 		qwtw_libName = libraryName * ".dll"
-	else # hopefully this may be Linux
+	elseif Sys.isapple()  # macOS: .dylib
 		if debug
-			@info "\t non-Windows detected"
+			@info "\t macOS detected, using .dylib"
+		end
+		qwtw_libName = libraryName * ".dylib"
+	else  # Linux etc.
+		if debug
+			@info "\t non-Windows detected, using .so"
 		end
 		qwtw_libName = libraryName * ".so"
 	end
 	
 	saveEnv()
 
-	marbleDataPath = joinpath(marble_jll.artifact_dir, "data")
-	if isempty(marblePluginPath)
-		marblePluginPath = joinpath(marble_jll.artifact_dir, "plugins")
-		if debug 
-			@info "using standard location for Marble plugins (from marble_jll): $marblePluginPath"
+	marbleDataPath = ""
+	if skipMarble || !isdefined(marble_jll, :artifact_dir)
+		if debug
+			if skipMarble
+				@info "Skipping Marble artifact paths (skipMarble=true)."
+			else
+				@warn "marble_jll.artifact_dir missing; skipping Marble data/plugins."
+			end
 		end
 	else
-		if debug 
-			@info "using altenative location for Marble plugins: $marblePluginPath"
+		marbleDataPath = joinpath(marble_jll.artifact_dir, "data")
+		if isempty(marblePluginPath)
+			marblePluginPath = joinpath(marble_jll.artifact_dir, "plugins")
+			if debug 
+				@info "using standard location for Marble plugins (from marble_jll): $marblePluginPath"
+			end
+		else
+			if debug 
+				@info "using altenative location for Marble plugins: $marblePluginPath"
+			end
 		end
 	end
 
@@ -562,26 +581,33 @@ function qstart(;debug = false, qwtw_test = false, libraryName = "libqwtw", marb
 		
 	else
 		addEnvItem(qwtw_jll.PATH, "PATH", debug = debug)
-		@static if Sys.iswindows() 
-			ENV["QT_PLUGIN_PATH"]=Qt_jll.artifact_dir * "\\plugins"	
-			addEnvItem(qwtw_jll.LIBPATH, "PATH", debug = debug)
-			
-			#ENV["PATH"]= boost_jll.artifact_dir * "\\bin;" *  ENV["PATH"] 
-			#ENV["PATH"]= qwt_jll.artifact_dir * "\\bin;" *  ENV["PATH"] 
-			#ENV["PATH"]= Qt_jll.artifact_dir * "\\bin;" *  ENV["PATH"] 
-
-			#ENV["PATH"]= CompilerSupportLibraries_jll.artifact_dir * "\\bin;" *  ENV["PATH"] 
-			#new_env["PATH"]= FreeType2_jll.artifact_dir * "\\bin;" *  ENV["PATH"] 
+		# Qt_jll.artifact_dir is only set when a platform-specific wrapper is loaded (e.g. not on aarch64 macOS).
+		if isdefined(Qt_jll, :artifact_dir)
+			@static if Sys.iswindows()
+				ENV["QT_PLUGIN_PATH"] = Qt_jll.artifact_dir * "\\plugins"
+			else
+				ENV["QT_PLUGIN_PATH"] = string(Qt_jll.artifact_dir) * "/plugins"
+			end
 		else
-			ENV["QT_PLUGIN_PATH"]=string(Qt_jll.artifact_dir) * "/plugins"	
-			addEnvItem(qwtw_jll.LIBPATH, "LD_LIBRARY_PATH", debug = debug)	
-
-			#ENV["PATH"]= boost_jll.artifact_dir * "/bin;" *  ENV["PATH"] 
-			
-			#ENV["LD_LIBRARY_PATH"] = string(Qt_jll.LIBPATH) * ":" * ENV["LD_LIBRARY_PATH"] # do not sure why this is not already there
-			#ENV["LD_LIBRARY_PATH"] = string(CompilerSupportLibraries_jll.LIBPATH) * ":" * ENV["LD_LIBRARY_PATH"] # do not sure why this is not already there
-			#ENV["LD_LIBRARY_PATH"] = string(FreeType2_jll.LIBPATH) * ":" * ENV["LD_LIBRARY_PATH"] # do not sure why this is not already there
+			if debug
+				@warn "Qt_jll.artifact_dir not available (e.g. no JLL wrapper for this platform); QT_PLUGIN_PATH not set."
+			end
 		end
+		@static if Sys.iswindows()
+			addEnvItem(qwtw_jll.LIBPATH, "PATH", debug = debug)
+		else
+			addEnvItem(qwtw_jll.LIBPATH, "LD_LIBRARY_PATH", debug = debug)
+		end
+
+			#ENV["PATH"]= boost_jll.artifact_dir * "\\bin;" *  ENV["PATH"]
+			#ENV["PATH"]= qwt_jll.artifact_dir * "\\bin;" *  ENV["PATH"]
+			#ENV["PATH"]= Qt_jll.artifact_dir * "\\bin;" *  ENV["PATH"]
+			#ENV["PATH"]= CompilerSupportLibraries_jll.artifact_dir * "\\bin;" *  ENV["PATH"]
+			#new_env["PATH"]= FreeType2_jll.artifact_dir * "\\bin;" *  ENV["PATH"]
+			#ENV["PATH"]= boost_jll.artifact_dir * "/bin;" *  ENV["PATH"]
+			#ENV["LD_LIBRARY_PATH"] = string(Qt_jll.LIBPATH) * ":" * ENV["LD_LIBRARY_PATH"]
+			#ENV["LD_LIBRARY_PATH"] = string(CompilerSupportLibraries_jll.LIBPATH) * ":" * ENV["LD_LIBRARY_PATH"]
+			#ENV["LD_LIBRARY_PATH"] = string(FreeType2_jll.LIBPATH) * ":" * ENV["LD_LIBRARY_PATH"]
 	end
 
 	if debug
