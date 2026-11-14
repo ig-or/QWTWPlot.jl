@@ -542,6 +542,21 @@ function _resolve_library_name(libraryName::AbstractString)::String
 	end
 	push!(search_roots, joinpath(homedir(), ".qwtw"))
 
+	# 5. Check sibling developer workspace in ~/Library/CloudStorage/*/space/qwtw or ~/space/qwtw
+	for cand_base in (
+		joinpath(homedir(), "space", "qwtw"),
+		joinpath(homedir(), "qwtw"),
+	)
+		isdir(cand_base) && push!(search_roots, cand_base)
+	end
+	cs_dir = joinpath(homedir(), "Library", "CloudStorage")
+	if isdir(cs_dir)
+		for entry in readdir(cs_dir; join = true)
+			cand_base = joinpath(entry, "space", "qwtw")
+			isdir(cand_base) && push!(search_roots, cand_base)
+		end
+	end
+
 	for root in search_roots
 		for prefix in (root, joinpath(root, "qwtw"))
 			for pd in plat_dirs
@@ -630,9 +645,17 @@ function qstart(; debug = false, qwtw_test = false, libraryName = "libqwtw", mar
 	global qwtMglH, qwtMglLine, qwtMglMesh
 	global pleaseStopUdp
 
-	if started
-		debug && @info "qwtw already started"
-		return Int32(0)
+	if started && qwtwLibHandle != C_NULL && qwtStartH != C_NULL
+		# Call qtstart/qtstart_debug even when already started so libqwtw verifies
+		# its local socket to qwproc is still alive (and respawns qwproc if it exited).
+		rc = debug ? ccall(qwtStartDebugH, Int32, (Int32,), Int32(10)) :
+		             ccall(qwtStartH, Int32, ())
+		if rc == 0
+			debug && @info "qwtw already started and connected"
+			return Int32(0)
+		end
+		debug && @warn "qwtw connection lost (rc = $rc); reinitializing..."
+		qstop()
 	end
 
 	_load_settings!(; debug = debug)

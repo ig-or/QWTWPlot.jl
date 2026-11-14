@@ -162,9 +162,10 @@ qsetClipCallback(clipCallback)
 
 
 #### Settings 
-are stored in ~/.qwtw/settings.json file. In rare cases you may want to update this file manually. 
+are stored in `~/.qwtw/settings.json` file. In rare cases you may want to update this file manually:
  * `pickerDigitsNumber` is the number of digits (with pointer coordinates) displayed near mouse cursor when you press left mouse button on a plot window (in 'marker' mode).
- * 'udp_server_port' and 'udp_client_port' port numbers have to be available to UDP protocols. Most functionality is implemented via shared memory, but there is still some parts relying on UDP. 
+ * `title_font_size`, `axis_label_font_size`, `axis_tick_font_size`, and `legend_font_size` control the font sizes (in logical pixels; defaults: `15`, `18`, `15`, `17`) for the plot title, X/Y axis labels, axis tick numbers, and line names in the legend.
+ * `udp_server_port` and `udp_client_port` port numbers have to be available to UDP protocols. 
 
  I suspect the underlying qwtw library is not thread-safe, so would not recommend to use it from different julia threads simultaneously. But you should be able to call most of the qwtw functions from a 'callback' (due to special 'guard' features).
 
