@@ -105,18 +105,28 @@ end
 
 		tx = UDPSocket()
 		bind(tx, ip"0.0.0.0", 0; multicast_loop = true)
-		# Set IP_MULTICAST_IF to 127.0.0.1 on POSIX so test works even under VPN tunnels
-		@static if Sys.isapple()
-			in_addr = Ref(hton(UInt32(ip"127.0.0.1".host)))
-			ccall(:setsockopt, Cint, (Cint, Cint, Cint, Ptr{UInt32}, UInt32), Base._fd(tx), 0, 9, in_addr, 4)
-		elseif Sys.islinux()
-			in_addr = Ref(hton(UInt32(ip"127.0.0.1".host)))
-			ccall(:setsockopt, Cint, (Cint, Cint, Cint, Ptr{UInt32}, UInt32), Base._fd(tx), 0, 32, in_addr, 4)
-		end
 		try
 			pkt = _make_picker_packet(label = "multicast_ok", plotID = Int32(77))
-			send(tx, IPv4(QWTWPlot.smip), QWTWPlot.udpPort, pkt)
-			res = timedwait(() -> isready(picked_ch), 2.0)
+			try
+				send(tx, IPv4(QWTWPlot.smip), QWTWPlot.udpPort, pkt)
+			catch
+			end
+			res = timedwait(() -> isready(picked_ch), 0.3)
+			if res != :ok
+				# Fallback to explicit loopback IP_MULTICAST_IF (needed under VPN tunnels on macOS/Linux)
+				@static if Sys.isapple()
+					in_addr = Ref(hton(UInt32(ip"127.0.0.1".host)))
+					ccall(:setsockopt, Cint, (Cint, Cint, Cint, Ptr{UInt32}, UInt32), Base._fd(tx), 0, 9, in_addr, 4)
+				elseif Sys.islinux()
+					in_addr = Ref(hton(UInt32(ip"127.0.0.1".host)))
+					ccall(:setsockopt, Cint, (Cint, Cint, Cint, Ptr{UInt32}, UInt32), Base._fd(tx), 0, 32, in_addr, 4)
+				elseif Sys.iswindows()
+					in_addr = Ref(hton(UInt32(ip"127.0.0.1".host)))
+					ccall((:setsockopt, "ws2_32"), Cint, (Ptr{Cvoid}, Cint, Cint, Ptr{UInt32}, Cint), Base._fd(tx), 0, 9, in_addr, 4)
+				end
+				send(tx, IPv4(QWTWPlot.smip), QWTWPlot.udpPort, pkt)
+				res = timedwait(() -> isready(picked_ch), 2.0)
+			end
 			@test res == :ok
 			if isready(picked_ch)
 				info = take!(picked_ch)
@@ -131,8 +141,26 @@ end
 
 	@testset "Live libqwtw + qwproc integration" begin
 		lib_candidate = QWTWPlot._resolve_library_name("libqwtw")
-		has_lib = isfile(lib_candidate) || Libdl.dlopen(lib_candidate; throw_error = false) !== nothing
+		require_live = get(ENV, "QWTW_REQUIRE_LIVE_TEST", "0") == "1"
+		has_lib = isfile(lib_candidate)
+		if !has_lib
+			h = Libdl.dlopen(lib_candidate; throw_error = false)
+			if h !== nothing
+				has_lib = true
+				Libdl.dlclose(h)
+			end
+		end
+		if require_live
+			@test has_lib
+		end
 		if has_lib
+			out_dir = get(ENV, "QWTW_TEST_ARTIFACT_DIR", "")
+			if isempty(out_dir)
+				out_dir = mktempdir()
+			else
+				mkpath(out_dir)
+			end
+
 			@test qstart() == 0
 			@test qStarted()
 			@test !isempty(qversion())
@@ -143,10 +171,25 @@ end
 			lid = qplot(0.0:0.1:2.0, sin.(0.0:0.1:2.0), "sin", "-b", 2)
 			@test lid >= 0
 			@test qchange(lid, 0.0:0.1:2.0, cos.(0.0:0.1:2.0)) >= 0
-			qtitle("QWTWPlot test")
+			lid2 = qplot2(0.0:0.1:2.0, sin.(0.0:0.1:2.0), 0.0:0.1:2.0, "sin_t", "-em", 2, 6)
+			@test lid2 >= 0
+			qtitle("QWTWPlot 2D test")
 			qxlabel("t [s]")
 			qylabel("amp")
+			plot2d_png = joinpath(out_dir, "plot2d_test.png")
+			@test qsavepng(plot2d_png, fid) == 0
+			@test isfile(plot2d_png) && filesize(plot2d_png) > 1000
 			qremove(lid)
+
+			# Spectrogram test
+			sfid = qspectrogram()
+			@test sfid > 0
+			sz = [sin(x) * cos(y) for y in range(-2.0, 2.0, length = 30), x in range(-3.0, 3.0, length = 40)]
+			@test qspectrogram_info(-2.0, 2.0, -3.0, 3.0, sz) == 0
+			qtitle("Spectrogram test")
+			spec_png = joinpath(out_dir, "spectrogram_test.png")
+			@test qsavepng(spec_png, sfid) == 0
+			@test isfile(spec_png) && filesize(spec_png) > 1000
 
 			# Native Qt6 + Qwt OpenStreetMap view test
 			mfid = qfmap()
@@ -157,7 +200,7 @@ end
 			mlid = qplot2(east, north, t_map, "trajectory", "-rb", 3, 10)
 			@test mlid >= 0
 			qtitle("OpenStreetMap trajectory test")
-			png_path = joinpath(mktempdir(), "map_test.png")
+			png_path = joinpath(out_dir, "map_test.png")
 			@test qsavepng(png_path, mfid) == 0
 			@test isfile(png_path) && filesize(png_path) > 1000
 

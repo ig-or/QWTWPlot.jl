@@ -483,7 +483,7 @@ end
 
 function _resolve_library_name(libraryName::AbstractString)::String
 	ext = _platform_lib_ext()
-	default_names = Sys.iswindows() ? ["qwtw.dll", "libqwtw.dll"] : ["libqwtw" * ext]
+	default_names = Sys.iswindows() ? ["libqwtw.dll", "qwtw.dll"] : ["libqwtw" * ext]
 
 	# 1. Explicit non-default libraryName passed by caller
 	if libraryName != "libqwtw" && !isempty(libraryName)
