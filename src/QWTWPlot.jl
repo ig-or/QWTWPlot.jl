@@ -672,13 +672,15 @@ function qstart(; debug = false, qwtw_test = false, libraryName = "libqwtw", mar
 		@info "loading $qwtw_libName"
 	end
 
-	try
-		qwtwLibHandle = Libdl.dlopen(qwtw_libName)
-	catch ex
-		debug && printEnv()
-		restoreEnv()
-		@error "dlopen for $qwtw_libName failed ($ex). Set ENV[\"QWTW_LIB_PATH\"] or pass libraryName=\"/path/to/libqwtw\"."
-		rethrow()
+	if qwtwLibHandle == C_NULL
+		try
+			qwtwLibHandle = Libdl.dlopen(qwtw_libName)
+		catch ex
+			debug && printEnv()
+			restoreEnv()
+			@error "dlopen for $qwtw_libName failed ($ex). Set ENV[\"QWTW_LIB_PATH\"] or pass libraryName=\"/path/to/libqwtw\"."
+			rethrow()
+		end
 	end
 
 	if debug
@@ -782,9 +784,14 @@ function qstop()::Int32
 		if qwtStopH != C_NULL && started
 			ccall(qwtStopH, Cvoid, ())
 		end
-		Libdl.dlclose(qwtwLibHandle)
-		qwtwLibHandle = C_NULL
-		qwtStopH = C_NULL
+		# On Windows (MinGW winpthreads / static libstdc++), FreeLibrary can
+		# deadlock under the OS Loader Lock when C++ threads were created in the DLL.
+		# Keep the handle open for reuse on Windows, matching python/qwtwc.py.
+		@static if !Sys.iswindows()
+			Libdl.dlclose(qwtwLibHandle)
+			qwtwLibHandle = C_NULL
+			qwtStopH = C_NULL
+		end
 		started = false
 		return Int32(0)
 	else
@@ -811,7 +818,7 @@ export qErrorBreak
 return native `libqwtw` version string.
 """
 function qversion()::String
-	if qwtwLibHandle == C_NULL || qwtwVersionH == C_NULL
+	if !started || qwtwLibHandle == C_NULL || qwtwVersionH == C_NULL
 		return "not started yet"
 	end
 	v = zeros(UInt8, 1024)

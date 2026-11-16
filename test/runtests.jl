@@ -100,6 +100,7 @@ end
 	end
 
 	@testset "Multicast UDP listener lifecycle" begin
+		println("  [test] Multicast UDP listener lifecycle..."); flush(stdout)
 		picked_ch = Channel{QCBInfo}(1)
 		qsetCallback(info -> put!(picked_ch, info))
 
@@ -113,18 +114,18 @@ end
 			end
 			res = timedwait(() -> isready(picked_ch), 0.3)
 			if res != :ok
-				# Fallback to explicit loopback IP_MULTICAST_IF (needed under VPN tunnels on macOS/Linux)
+				# Fallback to explicit loopback / unicast (needed under VPN tunnels or CI firewalls)
 				@static if Sys.isapple()
 					in_addr = Ref(hton(UInt32(ip"127.0.0.1".host)))
 					ccall(:setsockopt, Cint, (Cint, Cint, Cint, Ptr{UInt32}, UInt32), Base._fd(tx), 0, 9, in_addr, 4)
+					send(tx, IPv4(QWTWPlot.smip), QWTWPlot.udpPort, pkt)
 				elseif Sys.islinux()
 					in_addr = Ref(hton(UInt32(ip"127.0.0.1".host)))
 					ccall(:setsockopt, Cint, (Cint, Cint, Cint, Ptr{UInt32}, UInt32), Base._fd(tx), 0, 32, in_addr, 4)
-				elseif Sys.iswindows()
-					in_addr = Ref(hton(UInt32(ip"127.0.0.1".host)))
-					ccall((:setsockopt, "ws2_32"), Cint, (Ptr{Cvoid}, Cint, Cint, Ptr{UInt32}, Cint), Base._fd(tx), 0, 9, in_addr, 4)
+					send(tx, IPv4(QWTWPlot.smip), QWTWPlot.udpPort, pkt)
+				else
+					send(tx, ip"127.0.0.1", QWTWPlot.udpPort, pkt)
 				end
-				send(tx, IPv4(QWTWPlot.smip), QWTWPlot.udpPort, pkt)
 				res = timedwait(() -> isready(picked_ch), 2.0)
 			end
 			@test res == :ok
@@ -137,13 +138,15 @@ end
 			close(tx)
 			stopUdpThread()
 		end
+		println("  [test] Multicast UDP listener done."); flush(stdout)
 	end
 
 	@testset "Live libqwtw + qwproc integration" begin
+		println("  [test] Live libqwtw + qwproc integration..."); flush(stdout)
 		lib_candidate = QWTWPlot._resolve_library_name("libqwtw")
 		require_live = get(ENV, "QWTW_REQUIRE_LIVE_TEST", "0") == "1"
 		has_lib = isfile(lib_candidate)
-		if !has_lib
+		if !has_lib && !Sys.iswindows()
 			h = Libdl.dlopen(lib_candidate; throw_error = false)
 			if h !== nothing
 				has_lib = true
@@ -161,10 +164,12 @@ end
 				mkpath(out_dir)
 			end
 
+			println("  [test] calling qstart()..."); flush(stdout)
 			@test qstart() == 0
 			@test qStarted()
 			@test !isempty(qversion())
 
+			println("  [test] 2D figure + plot + savepng..."); flush(stdout)
 			fid = qfigure()
 			@test fid > 0
 			# Test AbstractVector / Range support as well as Vector{Float64}
@@ -181,7 +186,7 @@ end
 			@test isfile(plot2d_png) && filesize(plot2d_png) > 1000
 			qremove(lid)
 
-			# Spectrogram test
+			println("  [test] Spectrogram + savepng..."); flush(stdout)
 			sfid = qspectrogram()
 			@test sfid > 0
 			sz = [sin(x) * cos(y) for y in range(-2.0, 2.0, length = 30), x in range(-3.0, 3.0, length = 40)]
@@ -191,7 +196,7 @@ end
 			@test qsavepng(spec_png, sfid) == 0
 			@test isfile(spec_png) && filesize(spec_png) > 1000
 
-			# Native Qt6 + Qwt OpenStreetMap view test
+			println("  [test] OpenStreetMap + savepng..."); flush(stdout)
 			mfid = qfmap()
 			@test mfid > 0
 			east = [37.901073, 37.911073, 37.905073, 37.90]
@@ -204,10 +209,12 @@ end
 			@test qsavepng(png_path, mfid) == 0
 			@test isfile(png_path) && filesize(png_path) > 1000
 
+			println("  [test] qclear + qstop..."); flush(stdout)
 			qclear()
 
 			@test qstop() == 0
 			@test !qStarted()
+			println("  [test] Live integration done."); flush(stdout)
 		else
 			@info "Skipping live libqwtw integration test (set QWTW_LIB_PATH to run)"
 		end
