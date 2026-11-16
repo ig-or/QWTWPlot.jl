@@ -378,9 +378,11 @@ end
 
 saves `PATH`, `QT_PLUGIN_PATH`, and `LD_LIBRARY_PATH` (preserving unset state).
 """
+const _ENV_KEYS = ("PATH", "QT_PLUGIN_PATH", "LD_LIBRARY_PATH", "DYLD_FALLBACK_LIBRARY_PATH", "QWTW_PROC_PATH")
+
 function saveEnv()
 	empty!(_SAVED_ENV)
-	for k in ("PATH", "QT_PLUGIN_PATH", "LD_LIBRARY_PATH")
+	for k in _ENV_KEYS
 		if haskey(ENV, k)
 			_SAVED_ENV[k] = (true, ENV[k])
 		else
@@ -412,7 +414,7 @@ end
 simply print some of the env variables
 """
 function printEnv()
-	for k in ("PATH", "QT_PLUGIN_PATH", "LD_LIBRARY_PATH")
+	for k in _ENV_KEYS
 		if haskey(ENV, k)
 			@info "$k = $(ENV[k])"
 		else
@@ -452,6 +454,40 @@ function addEnvItem(item, var::String; debug = false)
 	return
 end
 
+"""
+	appendEnvItem(item, var::String; debug = false)
+
+append a non-empty entry to `ENV[var]` (used on Windows so Julia's own bundled
+MinGW DLLs stay ahead of JLL / MSYS2 runtime DLLs on `PATH`).
+"""
+function appendEnvItem(item, var::String; debug = false)
+	dv = Sys.iswindows() ? ";" : ":"
+
+	item2Add = if item isa AbstractString
+		String(item)
+	elseif item isa Base.RefValue{String}
+		item[]
+	else
+		string(item)
+	end
+
+	isempty(item2Add) && return
+
+	if debug
+		@info "appending [$item2Add] to [$var]"
+	end
+
+	if haskey(ENV, var) && !isempty(ENV[var])
+		ENV[var] = ENV[var] * dv * item2Add
+	else
+		ENV[var] = item2Add
+	end
+	return
+end
+
+const _QWTW_JLL_PKGID = Base.PkgId(Base.UUID("d5de49f9-40c9-5bd5-980e-f7e357ea5903"), "qwtw_jll")
+const _QT6BASE_JLL_PKGID = Base.PkgId(Base.UUID("c0090381-4147-56d7-9ebc-da0b1113ec56"), "Qt6Base_jll")
+
 function _platform_lib_ext()::String
 	@static if Sys.iswindows()
 		return ".dll"
@@ -460,6 +496,75 @@ function _platform_lib_ext()::String
 	else
 		return ".so"
 	end
+end
+
+function _try_load_jll(pkgid::Base.PkgId)
+	Base.locate_package(pkgid) === nothing && return nothing
+	try
+		return Base.require(pkgid)
+	catch
+		return nothing
+	end
+end
+
+function _jll_library_path()::Union{Nothing, String}
+	jll = _try_load_jll(_QWTW_JLL_PKGID)
+	jll === nothing && return nothing
+	if isdefined(jll, :is_available) && !Base.invokelatest(jll.is_available)
+		return nothing
+	end
+	# Only use qwtw_jll if it is the Qt6 v3+ build (not legacy Qt5 v2.x which depended on Qt_jll)
+	if isdefined(jll, :Qt_jll)
+		return nothing
+	end
+	if isdefined(jll, :get_qwtw_path)
+		p = String(Base.invokelatest(jll.get_qwtw_path))
+		isfile(p) && return p
+	end
+	if isdefined(jll, :qwtw)
+		p = String(getfield(jll, :qwtw))
+		isfile(p) && return p
+	end
+	return nothing
+end
+
+function _configure_jll_runtime_env!(; debug::Bool = false)
+	jll = _try_load_jll(_QWTW_JLL_PKGID)
+	if jll !== nothing && !isdefined(jll, :Qt_jll) && isdefined(jll, :is_available) && Base.invokelatest(jll.is_available)
+		if isdefined(jll, :PATH)
+			appendEnvItem(getfield(jll, :PATH), "PATH"; debug = debug)
+		end
+		if isdefined(jll, :LIBPATH)
+			@static if Sys.iswindows()
+				appendEnvItem(getfield(jll, :LIBPATH), "PATH"; debug = debug)
+			elseif Sys.isapple()
+				addEnvItem(getfield(jll, :LIBPATH), "DYLD_FALLBACK_LIBRARY_PATH"; debug = debug)
+			else
+				addEnvItem(getfield(jll, :LIBPATH), "LD_LIBRARY_PATH"; debug = debug)
+			end
+		end
+		if isdefined(jll, :qwproc_path) && !haskey(ENV, "QWTW_PROC_PATH")
+			ENV["QWTW_PROC_PATH"] = String(getfield(jll, :qwproc_path))
+		elseif isdefined(jll, :artifact_dir) && !haskey(ENV, "QWTW_PROC_PATH")
+			exe = Sys.iswindows() ? "qwproc.exe" : "qwproc"
+			cand = joinpath(String(getfield(jll, :artifact_dir)), "bin", exe)
+			isfile(cand) && (ENV["QWTW_PROC_PATH"] = cand)
+		end
+	end
+
+	qt6 = _try_load_jll(_QT6BASE_JLL_PKGID)
+	if qt6 !== nothing && isdefined(qt6, :artifact_dir) && !haskey(ENV, "QT_PLUGIN_PATH")
+		ad = String(getfield(qt6, :artifact_dir))
+		for rel in ("plugins", joinpath("share", "qt6", "plugins"), joinpath("lib", "qt6", "plugins"))
+			pdir = joinpath(ad, rel)
+			if isdir(pdir)
+				ENV["QT_PLUGIN_PATH"] = pdir
+				debug && @info "QT_PLUGIN_PATH set from Qt6Base_jll: $pdir"
+				break
+			end
+		end
+	end
+	return
 end
 
 function _platform_build_subdirs()::Vector{String}
@@ -577,7 +682,11 @@ function _resolve_library_name(libraryName::AbstractString)::String
 		end
 	end
 
-	# 5. Default shared library name for system dynamic linker
+	# 6. Prebuilt Qt6 qwtw_jll v3+ artifact (when installed via Julia package manager)
+	jll_lib = _jll_library_path()
+	jll_lib !== nothing && return jll_lib
+
+	# 7. Default shared library name for system dynamic linker
 	return default_names[1]
 end
 
@@ -664,8 +773,11 @@ function qstart(; debug = false, qwtw_test = false, libraryName = "libqwtw", mar
 	qwtw_libName = _resolve_library_name(libraryName)
 
 	saveEnv()
-	if !qwtw_test && isfile(qwtw_libName) && Sys.iswindows()
-		addEnvItem(dirname(abspath(qwtw_libName)), "PATH"; debug = debug)
+	if !qwtw_test
+		_configure_jll_runtime_env!(; debug = debug)
+		if isfile(qwtw_libName) && Sys.iswindows()
+			appendEnvItem(dirname(abspath(qwtw_libName)), "PATH"; debug = debug)
+		end
 	end
 
 	if debug
